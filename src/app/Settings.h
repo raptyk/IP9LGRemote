@@ -26,8 +26,8 @@ struct Settings {
     String tvKeycode;    // LG IP Control keycode (8 characters, optional)
     bool tvUsePin = false;  // pair with a PIN shown on the TV instead of the "Allow" prompt
 
-    // First-run setup completed per link (Wi-Fi setup is derived from the pairing key).
-    bool irSetupDone = false;
+    // First-run setup completed per link (Wi-Fi setup is derived from the pairing key,
+    // IR needs no setup: every LG TV understands the same codes).
     bool bleSetupDone = false;
     bool usbSetupDone = false;
 
@@ -37,6 +37,7 @@ struct Settings {
     uint16_t dimTimeoutSec = 20;
     uint16_t offTimeoutSec = 60;
     bool keyClick = false;
+    bool statusLed = true;  // RGB LED signals (mode colour flashes, connecting, errors)
 
     void load();
     void save() const;

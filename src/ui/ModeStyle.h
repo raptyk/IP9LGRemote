@@ -20,6 +20,19 @@ inline uint16_t modeColour(LinkMode mode) {
     }
 }
 
+// Status LED colours (0xRRGGBB), the LED counterpart of modeColour().
+constexpr uint32_t kLedSuccess = 0x00FF30;
+constexpr uint32_t kLedError = 0xFF0000;
+
+inline uint32_t modeLedColour(LinkMode mode) {
+    switch (mode) {
+        case LinkMode::Ir: return 0xFF5010;
+        case LinkMode::Ble: return 0x7A40FF;
+        case LinkMode::Usb: return 0x10D050;
+        default: return 0x1070FF;
+    }
+}
+
 inline icons::Icon modeIcon(LinkMode mode) {
     switch (mode) {
         case LinkMode::Ir: return icons::Icon::Infrared;

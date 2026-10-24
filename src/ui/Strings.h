@@ -45,11 +45,16 @@ constexpr const char* kStepFindTvText = "Search the network, or type the IP (TV:
 constexpr const char* kStepPair = "4. Pair";
 constexpr const char* kStepPairText = "TV asks to allow the remote (or shows a PIN). Nothing else to type.";
 
-constexpr const char* kStepIrTest = "1. Test infrared";
+constexpr const char* kStepIrTest = "Test infrared (optional)";
 constexpr const char* kStepIrTestText = "Aim the top edge (IR LED) at the TV and press enter to send VOL+.";
 constexpr const char* kIrTestQuestion = "Did the TV volume go up?";
 constexpr const char* kIrTestDetail = "enter = yes, esc = no";
 constexpr const char* kIrTestTips = "Get closer and aim at the TV's lower edge";
+constexpr const char* kIrTestOk = "Infrared works";
+constexpr const char* kSetupDoneTitle = "Connected!";
+constexpr const char* kSetupDoneBle = "Bluetooth paired with the TV";
+constexpr const char* kSetupDoneUsb = "TV detected the USB remote";
+constexpr const char* kSetupDoneHint = "TAB shows all keys";
 
 constexpr const char* kStepBleCheck = "1. Check the TV";
 constexpr const char* kStepBleCheckText = "Needs webOS 5 (2020+) with Bluetooth. Older TV: use the USB cable mode.";
@@ -102,6 +107,8 @@ constexpr const char* kMenuBrightness = "Brightness";
 constexpr const char* kMenuBrightnessText = "Screen brightness. Lower saves battery. < > change.";
 constexpr const char* kMenuKeyClick = "Key click sound";
 constexpr const char* kMenuKeyClickText = "Short beep on every key press.";
+constexpr const char* kMenuStatusLed = "Status light";
+constexpr const char* kMenuStatusLedText = "RGB LED: flash = sent, pulsing = connecting, green/red = ok/error.";
 constexpr const char* kMenuService = "Service codes";
 constexpr const char* kMenuServiceText = "Discrete IR codes: power on/off, HDMI inputs, service menus.";
 constexpr const char* kMenuAbout = "About";

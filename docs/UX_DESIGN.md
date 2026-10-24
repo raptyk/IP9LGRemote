@@ -47,12 +47,14 @@ The last used mode is preselected, so the usual start is a single `enter`.
 A mode that is not configured opens a checklist instead of the remote. Each row is one
 step with its live state on the right (`To do`, `Done`, network name, `Connected`) and
 an explanation at the bottom. `enter` performs the step; after each step the cursor
-jumps to the next open one. **Start remote** works only when every step is done.
+jumps to the next open one. Later steps are greyed out until the earlier ones are done
+(selecting one says "First: …"). When the last step completes, the remote opens by
+itself with a "Connected!" pop-up (closes after 2.5 s).
 
 | Mode | Steps |
 |---|---|
 | Wi-Fi remote | Connect to Wi-Fi → Prepare the TV (LG Connect Apps) → Find the TV (search / IP) → Pair (Allow or PIN) |
-| IR remote | Test infrared: sends VOL+ and asks "Did the TV volume go up?" |
+| IR remote | none – ready right away; `s` on the card opens an optional IR test (VOL+) |
 | Bluetooth | Check the TV (webOS 5+) → Pair (instructions + live status) |
 | USB cable | Connect the cable (USB starts, state turns `Connected` when the TV enumerates it) |
 
@@ -164,6 +166,25 @@ One screen for the whole network pairing, with a title and explanation per state
 connecting (with the TV address), "Accept on your TV", "Enter the PIN" (opens a PIN field),
 "Pairing failed" / "TV not answering" with the reason and a checklist. `enter` retries,
 `p` switches between prompt and PIN pairing, `esc` goes back.
+
+## Status light (RGB LED)
+
+The LED repeats the mode colour of the status bar chip (Wi-Fi blue, IR orange,
+Bluetooth violet, USB green). It stays dark while idle and connected, so it does not
+glow in a dim living room. Settings > Status light switches it off.
+
+| Signal | Meaning |
+|---|---|
+| short flash, mode colour | command sent (like the transmit LED of a real remote) |
+| two short red blinks | command could not be delivered |
+| slow pulse, mode colour | connecting / waiting for the TV (Wi-Fi, pairing, Bluetooth, USB host) |
+| two green blinks | connected / paired |
+| three red blinks | connection lost |
+| steady dim glow, mode colour | pointer mode is on |
+| short red blink every 10 s | battery at 10 % or less |
+
+On the Cardputer ADV the LED power switch shares GPIO38 with the display backlight,
+so the LED may stay dark while the screen is off.
 
 ## Text entry (t)
 

@@ -48,14 +48,15 @@ void App::begin() {
         canvas_.createSprite(theme::kScreenWidth, theme::kScreenHeight);
     }
 
-    applyDisplaySettings();
     ir_.begin();
     airMouse_.begin(device_.hasImu());
+    statusLed_.begin();
     wifi_.begin();
     webos_.begin();
     ipControl_.begin();
     applyWifiSettings();
     applyTvSettings();
+    applyDisplaySettings();
     // Bluetooth / USB start only when the user picks them on the home screen.
     const bool networkMode = settings_.linkMode == LinkMode::Auto || settings_.linkMode == LinkMode::Lan;
     router_.setMode(networkMode ? settings_.linkMode : LinkMode::Ir);
@@ -76,6 +77,8 @@ void App::loop() {
     }
     retired_.clear();
     updatePower();
+    updateStatusLed();
+    statusLed_.loop();
 
     const uint32_t now = millis();
     if (now - lastStatusRefreshAt_ >= kStatusRefreshMs) {
@@ -162,6 +165,7 @@ void App::applyDisplaySettings() {
     device_.setBrightness(settings_.brightness);
     airMouse_.setSpeed(settings_.pointerSpeed);
     airMouse_.setInvertY(settings_.pointerInvertY);
+    statusLed_.setEnabled(settings_.statusLed);
 }
 
 void App::selectMode(LinkMode mode) {
@@ -169,6 +173,74 @@ void App::selectMode(LinkMode mode) {
     router_.setMode(mode);
     saveSettings();
     dirty_ = true;
+}
+
+void App::signalCommand(bool delivered) {
+    if (delivered) {
+        statusLed_.flash(ui::modeLedColour(displayedMode()));
+    } else {
+        statusLed_.blink(ui::kLedError, 2, 60, 80);
+    }
+}
+
+LinkMode App::displayedMode() const {
+    return !screens_.empty() && screens_.back()->forcesInfrared() ? LinkMode::Ir : settings_.linkMode;
+}
+
+void App::updateStatusLed() {
+    // Signals (see docs/UX_DESIGN.md "Status light"):
+    //   flash in the mode colour = command sent, two red blinks = command not delivered,
+    //   slow pulse in the mode colour = connecting / waiting for the TV,
+    //   two green blinks = connected, three red blinks = connection lost,
+    //   steady glow = pointer mode, short red blink every 10 s = battery low.
+    const LinkMode mode = displayedMode();
+    bool ready = false;
+    bool waiting = false;
+    switch (mode) {
+        case LinkMode::Ble:
+            ready = ble_.isConnected();
+            waiting = ble_.started() && !ready;
+            break;
+        case LinkMode::Usb:
+            ready = usb_.isMounted();
+            waiting = usb_.started() && !ready;
+            break;
+        case LinkMode::Auto:
+        case LinkMode::Lan:
+            ready = webos_.isReady() || ipControl_.isReady();
+            waiting = !ready && (webos_.state() == LinkState::Connecting ||
+                                 (!settings_.wifiSsid.isEmpty() && !wifi_.isConnected()));
+            break;
+        default:
+            break;
+    }
+
+    if (mode == ledMode_ && ready != ledLinkReady_) {
+        if (ready) {
+            statusLed_.blink(ui::kLedSuccess, 2);
+        } else {
+            statusLed_.blink(ui::kLedError, 3);
+        }
+    }
+    ledMode_ = mode;
+    ledLinkReady_ = ready;
+
+    const bool onLinkScreen = !screens_.empty() && screens_.back()->showsLinkStatus();
+    const uint32_t colour = ui::modeLedColour(mode);
+    if (pointerActive_) {
+        statusLed_.setBackground(LedPattern::Steady, colour);
+    } else if (waiting && onLinkScreen) {
+        statusLed_.setBackground(LedPattern::Breathing, colour);
+    } else {
+        statusLed_.setBackground(LedPattern::Off, 0);
+        if (millis() - lastBatteryBlinkAt_ > 10000) {
+            lastBatteryBlinkAt_ = millis();  // the battery ADC is read at most every 10 s
+            const int battery = device_.batteryPercent();
+            if (battery >= 0 && battery <= 10 && !device_.isCharging()) {
+                statusLed_.flash(ui::kLedError, 40);
+            }
+        }
+    }
 }
 
 void App::handleInput() {

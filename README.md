@@ -32,13 +32,16 @@ at the bottom of the screen and the remote starts only when all steps are done.
 
 - **Wi-Fi remote**: join Wi-Fi → prepare the TV (LG Connect Apps / Mobile TV On) → find the TV
   (search or IP address) → pair (press *Allow* on the TV, or press `p` for PIN pairing).
-- **IR remote**: one test – the Cardputer sends VOL+ and asks whether the TV reacted.
+- **IR remote**: no setup – ready right away (`s` on the card runs an optional IR test).
 - **Bluetooth**: needs webOS 5+; the pairing screen shows where the TV menu is.
 - **USB cable**: plug a USB-C cable into the TV; the setup completes when the TV detects it.
 
 Optional, webOS 23+: *Settings > Support > IP Control Settings* shows an 8-character keycode –
 enter it in **Settings > TV (network) > IP Control keycode** for an extra fallback link.
 (The 6-character code of the *Developer Mode* app is unrelated and not needed.)
+
+The RGB LED shows the mode colour: a flash for every sent command, a slow pulse while
+connecting, green / red blinks for connected / errors (Settings > Status light turns it off).
 
 ## Keys (remote screen)
 

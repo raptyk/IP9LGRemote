@@ -13,6 +13,7 @@
 #include "hw/AirMouse.h"
 #include "hw/Device.h"
 #include "hw/KeyboardInput.h"
+#include "hw/StatusLed.h"
 #include "ipcontrol/IpControlClient.h"
 #include "ir/IrTransport.h"
 #include "net/WifiService.h"
@@ -44,6 +45,9 @@ public:
 
     // Feedback for a sent key (shown on the remote screen).
     void keyClick();
+    // Status LED feedback: a flash in the mode colour when a command left, red when it could not.
+    void signalCommand(bool delivered);
+    void setPointerActive(bool active) { pointerActive_ = active; }
 
     Settings& settings() { return settings_; }
     void saveSettings() { settings_.save(); }
@@ -63,12 +67,15 @@ public:
     WifiService& wifi() { return wifi_; }
     TvDiscovery& discovery() { return discovery_; }
     AirMouse& airMouse() { return airMouse_; }
+    StatusLed& statusLed() { return statusLed_; }
     KeyboardInput& keyboard() { return keyboard_; }
 
 private:
     void handleInput();
     void syncServices();
     void updatePower();
+    void updateStatusLed();
+    LinkMode displayedMode() const;
     void render();
     void drawStatusBar();
     void drawFooter(const char* text);
@@ -85,6 +92,7 @@ private:
     WifiService wifi_;
     TvDiscovery discovery_;
     AirMouse airMouse_;
+    StatusLed statusLed_;
     CommandRouter router_;
 
     M5Canvas canvas_;
@@ -98,6 +106,12 @@ private:
     uint32_t toastUntil_ = 0;
 
     bool textFieldHintShown_ = false;
+
+    // Status LED state tracking.
+    bool pointerActive_ = false;
+    LinkMode ledMode_ = LinkMode::Count;
+    bool ledLinkReady_ = false;
+    uint32_t lastBatteryBlinkAt_ = 0;
 
     uint32_t lastInputAt_ = 0;
     bool screenDimmed_ = false;

@@ -12,6 +12,8 @@ namespace lgremote {
 
 namespace {
 
+constexpr uint32_t kSuccessPopupMs = 2500;
+
 const char* titleFor(LinkMode mode) {
     switch (mode) {
         case LinkMode::Ir: return str::kCardIrTitle;
@@ -26,6 +28,28 @@ const char* titleFor(LinkMode mode) {
 SetupScreen::SetupScreen(App& app, LinkMode mode)
     : ListScreen(app, String(str::kSetupTitlePrefix) + titleFor(mode)), mode_(mode) {
     build();
+    completeAtStart_ = allDone();
+}
+
+void SetupScreen::tick() {
+    if (!completeAtStart_ && allDone()) {
+        finish();
+    }
+}
+
+void SetupScreen::finish() {
+    App& app = app_;
+    const Settings& settings = app.settings();
+    String title = str::kSetupDoneTitle;
+    String body;
+    switch (mode_) {
+        case LinkMode::Ble: body = str::kSetupDoneBle; break;
+        case LinkMode::Usb: body = str::kSetupDoneUsb; break;
+        default: body = settings.tvName.isEmpty() ? settings.tvHost : settings.tvName; break;
+    }
+    app.pop();  // `this` is retired; only locals are used below
+    app.push(std::make_unique<RemoteScreen>(app));
+    app.push(std::make_unique<InfoScreen>(app, title, body, str::kSetupDoneHint, kSuccessPopupMs));
 }
 
 void SetupScreen::onEnter() {
@@ -96,17 +120,20 @@ void SetupScreen::build() {
     App& app = app_;
     switch (mode_) {
         case LinkMode::Ir:
-            addStep(str::kStepIrTest, str::kStepIrTestText, [&app]() { return app.settings().irSetupDone; },
-                    [&app]() {
+            // Optional: IR works with every LG TV, the test only helps to aim correctly.
+            addStep(str::kStepIrTest, str::kStepIrTestText, [this]() { return irTested_; },
+                    [this]() {
+                        App& app = app_;
                         app.ir().sendKey(RemoteKey::VolumeUp);
                         app.push(std::make_unique<ConfirmScreen>(
                             app, str::kIrTestQuestion, str::kIrTestDetail,
-                            [&app]() {
-                                app.settings().irSetupDone = true;
-                                app.saveSettings();
+                            [this]() {
+                                irTested_ = true;
+                                app_.toast(str::kIrTestOk);
                             },
-                            [&app]() { app.toast(str::kIrTestTips); }));
-                    });
+                            [this]() { app_.toast(str::kIrTestTips); }));
+                    },
+                    [this]() { return String(irTested_ ? str::kStepOk : ""); }, false);
             break;
 
         case LinkMode::Ble:

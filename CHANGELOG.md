@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0 – 2026-10-25
+
+- Setup finishes by itself: after the last step (e.g. pairing) the remote opens with a
+  "Connected!" pop-up that closes after 2.5 s – no extra "Start remote" click.
+- IR mode is ready right away (every LG TV uses the same codes); the IR test is optional
+  (home screen, `s` on the IR card).
+- Settings start with "About".
+- Status light (RGB LED, Settings > Status light, on by default):
+  flash in the mode colour = command sent, two red blinks = not delivered,
+  slow pulse = connecting / waiting for the TV, two green blinks = connected,
+  three red blinks = connection lost, steady glow = pointer mode, red blink every 10 s = battery low.
+
 ## 1.2.0 – 2026-10-25
 
 - The active mode is obvious: coloured status bar chip per mode (Wi-Fi blue, IR orange,

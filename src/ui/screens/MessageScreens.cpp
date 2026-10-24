@@ -56,8 +56,22 @@ void ConfirmScreen::draw(M5Canvas& canvas, int top, int height) {
 
 // ---------------------------------------------------------------- InfoScreen
 
-InfoScreen::InfoScreen(App& app, String title, String body, String detail)
-    : Screen(app), title_(std::move(title)), body_(std::move(body)), detail_(std::move(detail)) {}
+InfoScreen::InfoScreen(App& app, String title, String body, String detail, uint32_t autoCloseMs)
+    : Screen(app),
+      title_(std::move(title)),
+      body_(std::move(body)),
+      detail_(std::move(detail)),
+      autoCloseMs_(autoCloseMs) {}
+
+void InfoScreen::onEnter() {
+    shownAt_ = millis();
+}
+
+void InfoScreen::tick() {
+    if (autoCloseMs_ > 0 && millis() - shownAt_ > autoCloseMs_) {
+        app_.pop();
+    }
+}
 
 void InfoScreen::onKey(const KeyEvent& event) {
     if (!event.repeat && (event.code == keycode::kEnter || event.code == keycode::kEsc ||

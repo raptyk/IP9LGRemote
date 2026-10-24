@@ -33,9 +33,12 @@ private:
 // Small pop-up card with a title and up to two lines of text; any of enter/esc/del closes it.
 class InfoScreen : public Screen {
 public:
-    InfoScreen(App& app, String title, String body, String detail = String());
+    // `autoCloseMs` > 0 closes the pop-up by itself (success messages).
+    InfoScreen(App& app, String title, String body, String detail = String(), uint32_t autoCloseMs = 0);
 
+    void onEnter() override;
     void onKey(const KeyEvent& event) override;
+    void tick() override;
     void draw(M5Canvas& canvas, int top, int height) override;
     const char* footer() const override;
 
@@ -43,6 +46,8 @@ private:
     String title_;
     String body_;
     String detail_;
+    uint32_t autoCloseMs_;
+    uint32_t shownAt_ = 0;
 };
 
 // Pairing with the TV over the network. Explains what to do on the TV for every state

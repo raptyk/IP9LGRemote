@@ -36,7 +36,6 @@ void Settings::load() {
     tvClientKey = prefs.getString("tv_key", "");
     tvKeycode = prefs.getString("tv_ipc", "");
     tvUsePin = prefs.getBool("tv_pin", tvUsePin);
-    irSetupDone = prefs.getBool("setup_ir", irSetupDone);
     bleSetupDone = prefs.getBool("setup_ble", bleSetupDone);
     usbSetupDone = prefs.getBool("setup_usb", usbSetupDone);
     pointerSpeed = constrain(prefs.getUChar("ptr_speed", pointerSpeed), 1, 5);
@@ -45,6 +44,7 @@ void Settings::load() {
     dimTimeoutSec = prefs.getUShort("dim_s", dimTimeoutSec);
     offTimeoutSec = prefs.getUShort("off_s", offTimeoutSec);
     keyClick = prefs.getBool("click", keyClick);
+    statusLed = prefs.getBool("led", statusLed);
     prefs.end();
 }
 
@@ -63,7 +63,6 @@ void Settings::save() const {
     prefs.putString("tv_key", tvClientKey);
     prefs.putString("tv_ipc", tvKeycode);
     prefs.putBool("tv_pin", tvUsePin);
-    prefs.putBool("setup_ir", irSetupDone);
     prefs.putBool("setup_ble", bleSetupDone);
     prefs.putBool("setup_usb", usbSetupDone);
     prefs.putUChar("ptr_speed", pointerSpeed);
@@ -72,6 +71,7 @@ void Settings::save() const {
     prefs.putUShort("dim_s", dimTimeoutSec);
     prefs.putUShort("off_s", offTimeoutSec);
     prefs.putBool("click", keyClick);
+    prefs.putBool("led", statusLed);
     prefs.end();
 }
 
@@ -86,7 +86,7 @@ void Settings::forgetTv() {
 
 bool Settings::isSetUp(LinkMode mode) const {
     switch (mode) {
-        case LinkMode::Ir: return irSetupDone;
+        case LinkMode::Ir: return true;
         case LinkMode::Ble: return bleSetupDone;
         case LinkMode::Usb: return usbSetupDone;
         case LinkMode::Auto:

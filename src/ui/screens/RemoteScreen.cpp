@@ -154,6 +154,7 @@ bool RemoteScreen::handlePointerKey(const KeyEvent& event) {
     if (event.code == keycode::kEnter) {
         if (!event.repeat && pointerLink_ != nullptr) {
             pointerLink_->click();
+            app_.signalCommand(true);
             label_ = "CLICK";
             via_ = String(str::kVia) + pointerLink_->name();
             lastFailed_ = false;
@@ -185,6 +186,7 @@ void RemoteScreen::send(RemoteKey key) {
         used = app_.router().sendKey(key);
     }
     app_.keyClick();
+    app_.signalCommand(used != nullptr);
 
     if (isDigitKey(key)) {
         if (now - lastSentAt_ > kFeedbackMs || digits_.length() >= 4) {
@@ -213,6 +215,7 @@ void RemoteScreen::togglePointer() {
         return;
     }
     pointerActive_ = true;
+    app_.setPointerActive(true);
     pointerLink_ = link;
     pointerLastActivityAt_ = millis();
     lastPointerTickAt_ = millis();
@@ -227,6 +230,7 @@ void RemoteScreen::stopPointer() {
         return;
     }
     pointerActive_ = false;
+    app_.setPointerActive(false);
     pointerLink_ = nullptr;
     app_.airMouse().stop();
     app_.invalidate();

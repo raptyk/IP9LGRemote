@@ -296,6 +296,8 @@ void promptTvAddress(App& app, Screen* returnTo) {
 
 std::unique_ptr<Screen> makeMainMenu(App& app) {
     std::vector<ListItem> items;
+    items.push_back(
+        {str::kMenuAbout, nullptr, [&app]() { app.push(makeAboutMenu(app)); }, nullptr, str::kMenuAboutText});
     items.push_back({str::kMenuWifi,
                      [&app]() -> String {
                          if (app.settings().wifiSsid.isEmpty()) return String(str::kNotSet);
@@ -349,10 +351,15 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
                          app.keyClick();
                      },
                      str::kMenuKeyClickText});
+    items.push_back({str::kMenuStatusLed, [&app]() { return onOff(app.settings().statusLed); }, nullptr,
+                     [&app](int) {
+                         app.settings().statusLed = !app.settings().statusLed;
+                         app.saveSettings();
+                         app.applyDisplaySettings();
+                     },
+                     str::kMenuStatusLedText});
     items.push_back({str::kMenuService, nullptr, [&app]() { app.push(makeServiceMenu(app)); }, nullptr,
                      str::kMenuServiceText});
-    items.push_back(
-        {str::kMenuAbout, nullptr, [&app]() { app.push(makeAboutMenu(app)); }, nullptr, str::kMenuAboutText});
     return std::make_unique<ListScreen>(app, str::kMenuTitle, std::move(items));
 }
 
