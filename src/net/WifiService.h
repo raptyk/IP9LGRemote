@@ -35,11 +35,20 @@ public:
 
 private:
     static constexpr uint32_t kRetryIntervalMs = 15000;
+    static constexpr uint32_t kScanMsPerChannel = 400;  // driver timeout = 20x this
+    static constexpr uint32_t kScanRetryDelayMs = 400;
+    static constexpr uint8_t kMaxScanAttempts = 3;
+
+    void beginScanAttempt();
+    void finishScan();
 
     String ssid_;
     String password_;
     uint32_t lastAttemptAt_ = 0;
-    bool scanning_ = false;
+    bool scanning_ = false;     // a scan request is being served (including retries)
+    bool scanRunning_ = false;  // the driver accepted the current attempt
+    uint8_t scanAttempts_ = 0;
+    uint32_t nextScanAttemptAt_ = 0;
 };
 
 }  // namespace lgremote

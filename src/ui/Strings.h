@@ -114,9 +114,13 @@ constexpr const char* kFooterValue = "< > change  del back";
 
 // Wi-Fi
 constexpr const char* kWifiTitle = "Wi-Fi network";
-constexpr const char* kWifiScanning = "Scanning...";
+constexpr const char* kWifiScanning = "Searching for Wi-Fi";
+constexpr const char* kWifiScanningText = "This takes a few seconds, please wait.";
+constexpr const char* kWifiStillScanning = "Still searching (try %d of %d)...";
 constexpr const char* kWifiNoNetworks = "No networks found";
-constexpr const char* kWifiRescan = "Scan again";
+constexpr const char* kWifiRescan = "Search again";
+constexpr const char* kWifiRescanText = "Nothing found yet. Check the router is on and nearby, then enter.";
+constexpr const char* kWifiRescanListText = "Refreshes the list of networks.";
 constexpr const char* kWifiForget = "Forget network";
 constexpr const char* kWifiPassword = "Password";
 constexpr const char* kWifiConnecting = "Connecting to Wi-Fi...";

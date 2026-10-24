@@ -13,6 +13,8 @@ namespace lgremote {
 
 namespace {
 constexpr uint32_t kPairedCloseDelayMs = 1200;
+constexpr int kAutoScanRounds = 3;
+constexpr uint32_t kAutoScanDelayMs = 1500;
 constexpr uint32_t kBleConnectedCloseDelayMs = 1500;
 }  // namespace
 
@@ -242,11 +244,35 @@ void WifiScanScreen::onEnter() {
     }
 }
 
+bool WifiScanScreen::searching() const {
+    return app_.wifi().scanInProgress() || nextAutoScanAt_ != 0;
+}
+
+void WifiScanScreen::restartSearch() {
+    networks_.clear();
+    emptyRounds_ = 0;
+    nextAutoScanAt_ = 0;
+    setItems({});
+    app_.wifi().startScan();
+}
+
 void WifiScanScreen::tick() {
     if (app_.wifi().takeScanResults(networks_)) {
-        rebuild();
+        // Right after boot the radio may still be busy joining the saved network and the
+        // first scan comes back empty: keep searching (with a visible counter) before
+        // telling the user that nothing was found.
+        if (networks_.empty() && emptyRounds_ + 1 < kAutoScanRounds) {
+            ++emptyRounds_;
+            nextAutoScanAt_ = millis() + kAutoScanDelayMs;
+        } else {
+            rebuild();
+        }
     }
-    if (app_.wifi().scanInProgress()) {
+    if (nextAutoScanAt_ != 0 && millis() >= nextAutoScanAt_) {
+        nextAutoScanAt_ = 0;
+        app_.wifi().startScan();
+    }
+    if (searching()) {
         app_.invalidate();
     }
 }
@@ -259,13 +285,8 @@ void WifiScanScreen::rebuild() {
         items.push_back(
             {network.ssid, [signal]() { return signal; }, [this, copy]() { choose(copy); }, nullptr, str::kWifiPickText});
     }
-    items.push_back({str::kWifiRescan, nullptr,
-                     [this]() {
-                         networks_.clear();
-                         setItems({});
-                         app_.wifi().startScan();
-                     },
-                     nullptr, String()});
+    items.push_back({str::kWifiRescan, nullptr, [this]() { restartSearch(); }, nullptr,
+                     networks_.empty() ? str::kWifiRescanText : str::kWifiRescanListText});
     if (!app_.settings().wifiSsid.isEmpty()) {
         items.push_back({str::kWifiForget, nullptr,
                          [this]() {
@@ -300,8 +321,11 @@ void WifiScanScreen::choose(const WifiNetwork& network) {
 }
 
 void WifiScanScreen::drawEmpty(M5Canvas& canvas, int top, int height) {
-    if (app_.wifi().scanInProgress()) {
-        painter::drawCenteredLines(canvas, top, height - 16, str::kWifiScanning);
+    if (searching()) {
+        char progress[48];
+        snprintf(progress, sizeof(progress), str::kWifiStillScanning, emptyRounds_ + 1, kAutoScanRounds);
+        painter::drawCenteredLines(canvas, top, height - 16, str::kWifiScanning,
+                                   emptyRounds_ == 0 ? str::kWifiScanningText : progress);
         painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 10);
     } else {
         painter::drawCenteredLines(canvas, top, height, str::kWifiNoNetworks);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1 – 2026-10-25
+
+- Fixed: the Wi-Fi list stayed empty for ~15 s while the Cardputer kept trying to join the
+  saved network. Connection attempts pause during a scan, failed scans are retried and the
+  connection resumes afterwards.
+- The Wi-Fi screen says what is happening ("Searching for Wi-Fi", "Still searching, try 2 of 3")
+  and searches again automatically before reporting that nothing was found.
+
 ## 1.1.0 – 2026-10-25
 
 Fixes from the first hardware test.

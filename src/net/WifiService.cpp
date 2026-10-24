@@ -53,8 +53,29 @@ void WifiService::startScan() {
     if (scanning_) {
         return;
     }
+    scanning_ = true;
+    scanAttempts_ = 0;
+    beginScanAttempt();
+}
+
+void WifiService::beginScanAttempt() {
+    // While the station keeps trying to join a network (wrong password, network out of
+    // range, auto-reconnect) the driver refuses or stalls scans, so connecting pauses.
+    if (!isConnected()) {
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect(false);
+    }
     WiFi.scanDelete();
-    scanning_ = WiFi.scanNetworks(true, false) == WIFI_SCAN_RUNNING;
+    ++scanAttempts_;
+    scanRunning_ = WiFi.scanNetworks(true, false, false, kScanMsPerChannel) == WIFI_SCAN_RUNNING;
+    nextScanAttemptAt_ = millis() + kScanRetryDelayMs;
+}
+
+void WifiService::finishScan() {
+    scanning_ = false;
+    scanRunning_ = false;
+    WiFi.setAutoReconnect(true);
+    lastAttemptAt_ = millis() - kRetryIntervalMs;  // reconnect right away in loop()
 }
 
 bool WifiService::scanInProgress() const {
@@ -65,11 +86,22 @@ bool WifiService::takeScanResults(std::vector<WifiNetwork>& out) {
     if (!scanning_) {
         return false;
     }
-    int16_t count = WiFi.scanComplete();
+    const int16_t count = scanRunning_ ? WiFi.scanComplete() : static_cast<int16_t>(WIFI_SCAN_FAILED);
     if (count == WIFI_SCAN_RUNNING) {
         return false;
     }
-    scanning_ = false;
+    if (count < 0) {
+        // Failed or timed out: retry a couple of times before reporting an empty list.
+        scanRunning_ = false;
+        if (scanAttempts_ < kMaxScanAttempts) {
+            if (millis() >= nextScanAttemptAt_) {
+                beginScanAttempt();
+            }
+            return false;
+        }
+        log_w("Wi-Fi scan failed %u times", scanAttempts_);
+    }
+    finishScan();
     out.clear();
     for (int16_t i = 0; i < count; ++i) {
         String name = WiFi.SSID(i);

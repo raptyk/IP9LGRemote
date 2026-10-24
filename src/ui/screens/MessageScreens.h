@@ -79,11 +79,15 @@ protected:
     void drawEmpty(M5Canvas& canvas, int top, int height) override;
 
 private:
+    bool searching() const;
+    void restartSearch();
     void rebuild();
     void choose(const WifiNetwork& network);
 
     std::vector<WifiNetwork> networks_;
     bool started_ = false;
+    int emptyRounds_ = 0;          // scans that came back empty during this search
+    uint32_t nextAutoScanAt_ = 0;  // automatic follow-up scan, 0 = none pending
 };
 
 // Searches the LAN for webOS TVs (SSDP) and offers manual IP entry.
