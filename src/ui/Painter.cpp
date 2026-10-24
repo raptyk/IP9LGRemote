@@ -59,25 +59,27 @@ int drawTitle(M5Canvas& canvas, int top, const char* title) {
     return top + 20;
 }
 
-void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected) {
+void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected,
+                 bool enabled) {
     if (selected) {
-        canvas.fillRoundRect(3, y, kScreenWidth - 10, height, 4, kAccent);
+        canvas.fillRoundRect(3, y, kScreenWidth - 10, height, 4, enabled ? kAccent : kSurfaceHigh);
     }
+    const uint16_t labelColour = enabled ? kText : (selected ? kTextMuted : kTextDisabled);
     canvas.setFont(&fonts::FreeSans9pt7b);
     canvas.setTextSize(1);
-    canvas.setTextColor(kText);
+    canvas.setTextColor(labelColour);
     const int centerY = y + height / 2 + 1;
 
     int labelWidth = kScreenWidth - 2 * kPadding - 8;
     if (value.length() > 0) {
         canvas.setFont(&fonts::Font0);
-        const int valueWidth = min<int>(canvas.textWidth(value), 90);
+        const int valueWidth = min<int>(canvas.textWidth(value), 110);
         canvas.setTextColor(selected ? kText : kTextMuted);
         canvas.setTextDatum(middle_right);
         drawClippedText(canvas, value, kScreenWidth - kPadding - 6, centerY, valueWidth);
         labelWidth -= valueWidth + 8;
         canvas.setFont(&fonts::FreeSans9pt7b);
-        canvas.setTextColor(kText);
+        canvas.setTextColor(labelColour);
     }
     canvas.setTextDatum(middle_left);
     drawClippedText(canvas, label, kPadding + 2, centerY, labelWidth);

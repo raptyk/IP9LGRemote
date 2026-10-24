@@ -67,7 +67,7 @@ jumps to the next open one. **Start remote** works only when every step is done.
 │              ▁▂▃▄▅▆▇ 24                   │  optional detail (volume level)
 │                                          │
 ├──────────────────────────────────────────┤
-│ opt home  ? help  a pointer              │  footer hints (16 px)
+│ tab help  opt home  a pointer            │  footer hints (16 px)
 └──────────────────────────────────────────┘
 ```
 
@@ -76,7 +76,7 @@ jumps to the next open one. **Start remote** works only when every step is done.
 - The action area flashes the accent colour for ~120 ms on every sent command
   (visual "click"), then shows the action name for 1.5 s.
 - Pointer mode replaces the action area with a crosshair indicator and the
-  hint `enter click · fn+;. scroll · a exit`.
+  hint `enter click · [ ] scroll · a exit`. Arrows accept `fn` too.
 - All texts are word-wrapped; `tools/check_text_fit.py` verifies every string with
   the real font metrics (240 px width).
 
@@ -103,11 +103,11 @@ jumps to the next open one. **Start remote** works only when every step is done.
 | `z` `x` `c` | Rewind / Stop / Fast-forward | media cluster on the bottom row |
 | `r` `g` `y` `b` | Red / Green / Yellow / Blue | |
 | `a` or `G0` button | Pointer mode on/off | air mouse on ADV, arrow keys everywhere |
-| `fn` + `;` / `.` | Scroll up / down | pointer and list scrolling |
+| `[` / `]` in pointer mode | Scroll up / down | the Magic Remote wheel |
 | `t` | Type text on the TV | Wi-Fi, Bluetooth, USB |
 | `l` | App launcher | network; Netflix / Prime / Disney+ also over IR |
-| `opt` / `tab` | Back to the home screen | |
-| `?` / `fn`+`h` | Help (cheat sheet) | |
+| `opt` | Back to the home screen | |
+| `tab` (also `?`, `fn`+`h`) | Help (cheat sheet) | `?` = shift + `/`, which is also the right arrow |
 
 ## Links (transports)
 

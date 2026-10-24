@@ -47,12 +47,12 @@ constexpr HelpPage kPages[] = {
       {nullptr, nullptr}}},
     {"Smart",
      {{"a / G0", "Pointer"},
-      {"fn+; .", "Scroll"},
+      {"[ ]", "Scroll (ptr)"},
       {"t", "Type on TV"},
       {"l", "Apps"},
       {"opt", "Home screen"},
-      {"?", "This help"},
-      {nullptr, nullptr},
+      {"tab", "This help"},
+      {"fn+arrow", "Arrows too"},
       {nullptr, nullptr},
       {nullptr, nullptr},
       {nullptr, nullptr}}},
@@ -77,6 +77,7 @@ void HelpScreen::onKey(const KeyEvent& event) {
         case keycode::kEsc:
         case keycode::kBackspace:
         case keycode::kEnter:
+        case keycode::kTab:
             app_.pop();
             return;
         default:

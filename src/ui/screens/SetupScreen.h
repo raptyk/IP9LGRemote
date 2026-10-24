@@ -18,6 +18,7 @@ public:
 
 private:
     struct Step {
+        const char* label;
         std::function<bool()> isDone;
         bool required;
     };
@@ -27,6 +28,9 @@ private:
                  std::function<void()> action, std::function<String()> value = nullptr, bool required = true);
     void addStartRow();
     bool allDone() const;
+    // Index of the first unfinished required step before `index`, or -1.
+    int firstOpenStepBefore(size_t index) const;
+    String lockedReason(int openStep) const;
     void selectFirstOpenStep();
 
     LinkMode mode_;

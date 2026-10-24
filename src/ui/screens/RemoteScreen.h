@@ -12,14 +12,17 @@ namespace lgremote {
 class Transport;
 
 // Main screen: every key press is a remote button; the screen confirms what was sent.
+// With `infraredOnly` it becomes the service keypad: every key goes out over IR
+// (the factory menus and their password prompt only react to infrared).
 class RemoteScreen : public Screen {
 public:
-    using Screen::Screen;
+    explicit RemoteScreen(App& app, bool infraredOnly = false);
 
     void onKey(const KeyEvent& event) override;
     void tick() override;
     void draw(M5Canvas& canvas, int top, int height) override;
     const char* footer() const override;
+    bool forcesInfrared() const override { return infraredOnly_; }
 
 private:
     void send(RemoteKey key);
@@ -31,6 +34,7 @@ private:
     void drawFeedback(M5Canvas& canvas, int top, int height);
     void drawPointer(M5Canvas& canvas, int top, int height);
 
+    bool infraredOnly_;
     String label_;
     String via_;
     bool lastFailed_ = false;

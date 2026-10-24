@@ -27,6 +27,9 @@ public:
     // False for screens that are not tied to a link (home launcher): the status bar
     // then shows the app name instead of the link state.
     virtual bool showsLinkStatus() const { return true; }
+    // True for screens that send everything over infrared regardless of the selected mode
+    // (service keypad): the status bar then shows the IR mode.
+    virtual bool forcesInfrared() const { return false; }
 
 protected:
     App& app_;

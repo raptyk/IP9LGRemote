@@ -18,7 +18,9 @@ void drawBattery(M5Canvas& canvas, int right, int centerY, int percent, bool cha
 int drawTitle(M5Canvas& canvas, int top, const char* title);
 
 // One list row; `selected` rows are highlighted.
-void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected);
+// Disabled rows are greyed out (and highlighted in grey instead of the accent colour).
+void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected,
+                 bool enabled = true);
 
 // Splits text into lines that fit `maxWidth` with the canvas' current font (word wrap).
 std::vector<String> wrapText(M5Canvas& canvas, const String& text, int maxWidth);

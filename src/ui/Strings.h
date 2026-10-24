@@ -12,7 +12,7 @@ constexpr const char* kBleDeviceName = "Cardputer Remote";
 
 // Home launcher
 constexpr const char* kHomeStatus = "Choose a mode";
-constexpr const char* kFooterHome = "< > choose  enter open  s setup";
+constexpr const char* kFooterHome = "<> pick  enter open  s setup  tab help";
 constexpr const char* kCardWifiTitle = "Wi-Fi remote";
 constexpr const char* kCardWifiText = "Pointer, typing and apps over your home network. Falls back to IR.";
 constexpr const char* kCardIrTitle = "IR remote";
@@ -31,11 +31,10 @@ constexpr const char* kSetupNeeded = "Setup needed - press enter";
 // Setup checklists
 constexpr const char* kSetupTitlePrefix = "Setup: ";
 constexpr const char* kStepDone = "Done";
-constexpr const char* kStepTodo = "To do";
 constexpr const char* kStepOk = "OK";
 constexpr const char* kStepStart = "Start remote";
 constexpr const char* kStepStartText = "Opens the remote. Setup can be repeated: home screen, key s.";
-constexpr const char* kStepFinishFirst = "Finish the steps above first";
+constexpr const char* kStepFirstPrefix = "First: ";
 
 constexpr const char* kStepWifi = "1. Connect to Wi-Fi";
 constexpr const char* kStepWifiText = "The Cardputer must join the same network as the TV.";
@@ -64,9 +63,10 @@ constexpr const char* kUsbNotConnected = "Plug into TV USB";
 
 // Remote screen
 constexpr const char* kIdleTitle = "Ready";
-constexpr const char* kIdleHint = "Aim at the TV and press a key. ? shows all keys.";
-constexpr const char* kFooterRemote = "opt home  ? help  a pointer";
-constexpr const char* kFooterPointer = "enter click  fn+;. scroll  a exit";
+constexpr const char* kIdleHint = "Aim at the TV and press a key. TAB shows all keys.";
+constexpr const char* kFooterRemote = "tab help  opt home  a pointer";
+constexpr const char* kFooterServiceKeypad = "tab help  opt back";
+constexpr const char* kFooterPointer = "enter click  [ ] scroll  a exit";
 constexpr const char* kPointerTitle = "POINTER";
 constexpr const char* kPointerHintAir = "Move the remote to aim";
 constexpr const char* kPointerHintKeys = "Arrow keys move the cursor";
@@ -206,7 +206,9 @@ constexpr const char* kLaunching = "Opening ";
 
 // Service
 constexpr const char* kServiceTitle = "Service codes (IR)";
-constexpr const char* kServiceWarning = "May change TV settings!";
+constexpr const char* kServiceWarning = "Password: 0413 (else 0000). Wrong changes can break the TV!";
+constexpr const char* kServiceKeypadTitle = "Service menu (IR)";
+constexpr const char* kServiceKeypadText = "Password usually 0413 (else 0000). Digits, arrows and enter go over IR.";
 constexpr const char* kConfirmFooter = "enter yes  esc no";
 
 // Help
@@ -221,7 +223,11 @@ constexpr const char* kAboutImu = "Motion sensor";
 constexpr const char* kAboutIp = "IP address";
 constexpr const char* kAboutHeap = "Free memory";
 constexpr const char* kAboutAuthor = "Author";
+constexpr const char* kAboutAuthorText = "Who made this remote. Enter shows the details.";
 constexpr const char* kAuthor = "Patryk Strzelecki";
+constexpr const char* kAuthorEmail = "patryk@strzelecki.info";
+constexpr const char* kAuthorDetail = "CardputerLGRemote, MIT license";
+constexpr const char* kFooterInfo = "enter / esc close";
 
 // General
 constexpr const char* kSaved = "Saved";

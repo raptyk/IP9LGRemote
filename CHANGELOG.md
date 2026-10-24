@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 – 2026-10-25
+
+- The active mode is obvious: coloured status bar chip per mode (Wi-Fi blue, IR orange,
+  Bluetooth violet, USB green), matching home cards, and the mode icon + name on the remote.
+- `tab` opens the help everywhere ("?" needs shift + "/", which is the right arrow).
+  `fn` + `;` `.` `,` `/` work as arrows too; in pointer mode `[` `]` scroll.
+- Setup checklists grey out later steps; selecting one says which step comes first.
+- Service menus: the password (0413, else 0000) is shown, and after In Start / EZ Adjust an
+  IR-only keypad opens so digits, arrows and OK reach the TV.
+- About starts with the author; enter opens a pop-up with name, e-mail and licence.
+
 ## 1.1.1 – 2026-10-25
 
 - Fixed: the Wi-Fi list stayed empty for ~15 s while the Cardputer kept trying to join the

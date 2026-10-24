@@ -54,6 +54,31 @@ void ConfirmScreen::draw(M5Canvas& canvas, int top, int height) {
     painter::drawCenteredLines(canvas, top, height, question_.c_str(), detail_.isEmpty() ? nullptr : detail_.c_str());
 }
 
+// ---------------------------------------------------------------- InfoScreen
+
+InfoScreen::InfoScreen(App& app, String title, String body, String detail)
+    : Screen(app), title_(std::move(title)), body_(std::move(body)), detail_(std::move(detail)) {}
+
+void InfoScreen::onKey(const KeyEvent& event) {
+    if (!event.repeat && (event.code == keycode::kEnter || event.code == keycode::kEsc ||
+                          event.code == keycode::kBackspace || event.code == keycode::kTab)) {
+        app_.pop();
+    }
+}
+
+const char* InfoScreen::footer() const {
+    return str::kFooterInfo;
+}
+
+void InfoScreen::draw(M5Canvas& canvas, int top, int height) {
+    using namespace theme;
+    const int margin = 8;
+    canvas.fillRoundRect(margin, top + 6, kScreenWidth - 2 * margin, height - 12, 8, kSurface);
+    canvas.drawRoundRect(margin, top + 6, kScreenWidth - 2 * margin, height - 12, 8, kAccent);
+    painter::drawCenteredLines(canvas, top + 6, height - 12, title_.c_str(), body_.c_str(),
+                               detail_.isEmpty() ? nullptr : detail_.c_str());
+}
+
 // ---------------------------------------------------------------- TvPairingScreen
 
 TvPairingScreen::TvPairingScreen(App& app, Screen* returnTo) : Screen(app), returnTo_(returnTo) {}

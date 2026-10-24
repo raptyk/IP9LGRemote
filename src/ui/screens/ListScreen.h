@@ -17,6 +17,8 @@ struct ListItem {
     std::function<void()> onSelect;           // enter
     std::function<void(int delta)> onAdjust;  // left / right (for value settings)
     String description;                       // shown at the bottom while the row is selected
+    std::function<bool()> enabled;            // optional: greyed out and locked while false
+    std::function<String()> lockedReason;     // toast shown when a locked row is selected
 };
 
 // Vertical list navigated with ; . (up/down), enter to select, , / to adjust values,
@@ -35,6 +37,9 @@ public:
 protected:
     void setItems(std::vector<ListItem> items);
     void select(int index);
+    bool isEnabled(int index) const;
+    // Runs the row's action, or explains why a locked row cannot be used yet.
+    void activate(int index);
     // Content drawn instead of the list when it is empty (e.g. "Scanning...").
     virtual void drawEmpty(M5Canvas& canvas, int top, int height);
     // Called when del/esc leaves the list (default: close the screen).

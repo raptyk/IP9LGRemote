@@ -25,6 +25,13 @@ constexpr uint16_t kKeyRed = rgb(220, 50, 50);
 constexpr uint16_t kKeyGreen = rgb(50, 180, 70);
 constexpr uint16_t kKeyYellow = rgb(230, 200, 40);
 constexpr uint16_t kKeyBlue = rgb(50, 110, 230);
+constexpr uint16_t kTextDisabled = rgb(80, 80, 92);
+
+// One colour per link mode, used by the status bar chip so the mode is obvious at a glance.
+constexpr uint16_t kModeWifi = rgb(30, 120, 230);
+constexpr uint16_t kModeIr = rgb(225, 80, 30);
+constexpr uint16_t kModeBluetooth = rgb(110, 80, 220);
+constexpr uint16_t kModeUsb = rgb(30, 160, 90);
 
 constexpr int kScreenWidth = 240;
 constexpr int kScreenHeight = 135;

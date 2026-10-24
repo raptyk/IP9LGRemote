@@ -42,6 +42,8 @@ enter it in **Settings > TV (network) > IP Control keycode** for an extra fallba
 
 ## Keys (remote screen)
 
+Arrows work with or without `fn` (the Cardputer convention `fn` + `;` `.` `,` `/`).
+
 | Key | Action | Key | Action |
 |---|---|---|---|
 | `;` `.` `,` `/` | arrows | `enter` | OK |
@@ -53,9 +55,9 @@ enter it in **Settings > TV (network) > IP Control keycode** for an extra fallba
 | `m` | Mute | `]` `[` | Channel |
 | `0`–`9` | digits | `space` | Play / Pause |
 | `z` `x` `c` | Rewind / Stop / Forward | `r` `g` `y` `b` | colour keys |
-| `a` / `G0` | pointer on/off | `fn`+`;` `.` | scroll |
+| `a` / `G0` | pointer on/off | `[` `]` | scroll (pointer mode) |
 | `t` | type on TV | `l` | apps |
-| `opt` / `tab` | back to home screen | `?` | help |
+| `opt` | back to home screen | `tab` | help |
 
 Design rationale: [docs/UX_DESIGN.md](docs/UX_DESIGN.md). Protocol research: [docs/PROTOCOLS.md](docs/PROTOCOLS.md).
 

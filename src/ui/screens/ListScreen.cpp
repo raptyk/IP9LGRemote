@@ -57,12 +57,7 @@ void ListScreen::onKey(const KeyEvent& event) {
             break;
         case keycode::kEnter:
             if (!event.repeat && count > 0) {
-                ListItem& item = items_[selected_];
-                if (item.onSelect) {
-                    item.onSelect();  // may push/pop screens; `this` can be retired afterwards
-                } else if (item.onAdjust) {
-                    item.onAdjust(1);
-                }
+                activate(selected_);  // may push/pop screens; `this` can be retired afterwards
             }
             return;
         case keycode::kBackspace:
@@ -77,13 +72,31 @@ void ListScreen::onKey(const KeyEvent& event) {
                 const int index = event.code - '1';
                 if (index < count) {
                     selected_ = index;
-                    if (items_[index].onSelect) {
-                        items_[index].onSelect();
-                        return;
-                    }
+                    activate(index);
+                    return;
                 }
             }
             break;
+    }
+}
+
+bool ListScreen::isEnabled(int index) const {
+    const ListItem& item = items_[index];
+    return !item.enabled || item.enabled();
+}
+
+void ListScreen::activate(int index) {
+    ListItem& item = items_[index];
+    if (!isEnabled(index)) {
+        if (item.lockedReason) {
+            app_.toast(item.lockedReason());
+        }
+        return;
+    }
+    if (item.onSelect) {
+        item.onSelect();
+    } else if (item.onAdjust) {
+        item.onAdjust(1);
     }
 }
 
@@ -118,9 +131,11 @@ void ListScreen::draw(M5Canvas& canvas, int top, int height) {
             break;
         }
         const ListItem& item = items_[index];
-        const String value = item.value ? item.value() : String();
+        const bool enabled = isEnabled(index);
+        // Locked rows show no state, only a greyed-out label.
+        const String value = enabled && item.value ? item.value() : String();
         painter::drawListRow(canvas, listTop + row * kRowHeight, kRowHeight - 1, item.label, value,
-                             index == selected_);
+                             index == selected_, enabled);
     }
     painter::drawScrollBar(canvas, listTop, visible * kRowHeight, firstVisible_, visible, items_.size());
 

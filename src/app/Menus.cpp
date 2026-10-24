@@ -7,6 +7,7 @@
 #include "ui/Strings.h"
 #include "ui/screens/ListScreen.h"
 #include "ui/screens/MessageScreens.h"
+#include "ui/screens/RemoteScreen.h"
 #include "ui/screens/TextFieldScreen.h"
 #include "webos/WakeOnLan.h"
 
@@ -217,22 +218,26 @@ std::unique_ptr<Screen> makeServiceMenu(App& app) {
         {"HDMI 2", "Switches straight to HDMI 2 (IR).", RemoteKey::Hdmi2, false},
         {"HDMI 3", "Switches straight to HDMI 3 (IR).", RemoteKey::Hdmi3, false},
         {"HDMI 4", "Switches straight to HDMI 4 (IR).", RemoteKey::Hdmi4, false},
-        {"In Start (service)", "Factory service menu. Wrong changes can break the TV!", RemoteKey::InStart, true},
-        {"EZ Adjust (service)", "Factory adjust menu. Wrong changes can break the TV!", RemoteKey::EzAdjust, true},
+        {"In Start (service)", "Factory service menu, password 0413 (else 0000). Can break the TV!",
+         RemoteKey::InStart, true},
+        {"EZ Adjust (service)", "Factory adjust menu, password 0413 (else 0000). Can break the TV!",
+         RemoteKey::EzAdjust, true},
     };
     std::vector<ListItem> items;
     for (const ServiceCode& code : kCodes) {
         items.push_back({code.label, nullptr,
                          [&app, code]() {
-                             auto send = [&app, code]() {
+                             if (!code.risky) {
                                  app.ir().sendKey(code.key);
                                  app.toast(String(str::kSent) + code.label);
-                             };
-                             if (code.risky) {
-                                 app.push(std::make_unique<ConfirmScreen>(app, code.label, str::kServiceWarning, send));
-                             } else {
-                                 send();
+                                 return;
                              }
+                             // Service menus ask for a password and are driven by digits/arrows/OK:
+                             // open the IR-only keypad so every key reaches the TV over infrared.
+                             app.push(std::make_unique<ConfirmScreen>(app, code.label, str::kServiceWarning, [&app, code]() {
+                                 app.ir().sendKey(code.key);
+                                 app.push(std::make_unique<RemoteScreen>(app, true));
+                             }));
                          },
                          nullptr, code.description});
     }
@@ -241,6 +246,12 @@ std::unique_ptr<Screen> makeServiceMenu(App& app) {
 
 std::unique_ptr<Screen> makeAboutMenu(App& app) {
     std::vector<ListItem> items;
+    items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); },
+                     [&app]() {
+                         app.push(std::make_unique<InfoScreen>(app, str::kAuthor, str::kAuthorEmail,
+                                                               String(str::kAuthorDetail) + " " + APP_VERSION));
+                     },
+                     nullptr, str::kAboutAuthorText});
     items.push_back({str::kAboutVersion, []() { return String(APP_VERSION); }, nullptr, nullptr, String()});
     items.push_back({str::kAboutDevice, [&app]() { return String(app.device().modelName()); }, nullptr, nullptr,
                      String()});
@@ -249,7 +260,6 @@ std::unique_ptr<Screen> makeAboutMenu(App& app) {
                      nullptr, nullptr, String()});
     items.push_back(
         {str::kAboutHeap, []() { return String(ESP.getFreeHeap() / 1024) + " KB"; }, nullptr, nullptr, String()});
-    items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); }, nullptr, nullptr, String()});
     return std::make_unique<ListScreen>(app, str::kAboutTitle, std::move(items));
 }
 

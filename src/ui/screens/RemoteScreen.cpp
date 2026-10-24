@@ -4,6 +4,8 @@
 
 #include "app/App.h"
 #include "app/Menus.h"
+#include "ui/Icons.h"
+#include "ui/ModeStyle.h"
 #include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
@@ -82,6 +84,8 @@ uint16_t colourKeyColour(const String& label) {
 
 }  // namespace
 
+RemoteScreen::RemoteScreen(App& app, bool infraredOnly) : Screen(app), infraredOnly_(infraredOnly) {}
+
 void RemoteScreen::onKey(const KeyEvent& event) {
     if (handleAction(event)) {
         return;
@@ -104,22 +108,14 @@ bool RemoteScreen::handleAction(const KeyEvent& event) {
     if (event.repeat) {
         return false;
     }
-    // Help: "?" (shift + /) or fn + h.
-    if ((event.code == keycode::kRight && event.shift) || (event.code == 'h' && event.fn)) {
+    // Help on its own key: "?" needs shift + "/", and "/" is the right arrow, which matters more.
+    // Fn is ignored for the arrows, so the Cardputer convention fn + ; . , / works as well.
+    if (event.code == keycode::kTab || (event.code == keycode::kRight && event.shift) ||
+        (event.code == 'h' && event.fn)) {
         app_.push(std::make_unique<HelpScreen>(app_));
         return true;
     }
-    if (event.fn && (event.code == keycode::kUp || event.code == keycode::kDown)) {
-        Transport* link = app_.router().pointerTransport();
-        if (link == nullptr) {
-            app_.toast(app_.router().pointerUnavailableReason());
-        } else {
-            link->scroll(event.code == keycode::kUp ? -1 : 1);
-        }
-        return true;
-    }
     switch (event.code) {
-        case keycode::kTab:
         case keycode::kOpt:
             // Back to the home screen (mode choice, settings, help).
             stopPointer();
@@ -127,10 +123,14 @@ bool RemoteScreen::handleAction(const KeyEvent& event) {
             return true;
         case keycode::kButtonG0:
         case 'a':
-            togglePointer();
+            if (infraredOnly_) {
+                app_.toast(str::kNeedsLanOrBle);
+            } else {
+                togglePointer();
+            }
             return true;
         case 't':
-            if (app_.router().textTransport() == nullptr) {
+            if (infraredOnly_ || app_.router().textTransport() == nullptr) {
                 app_.toast(app_.router().pointerUnavailableReason());
             } else {
                 stopPointer();
@@ -162,6 +162,13 @@ bool RemoteScreen::handlePointerKey(const KeyEvent& event) {
         }
         return true;
     }
+    if (event.code == ']' || event.code == '[') {
+        // In pointer mode the channel keys act as the Magic Remote wheel.
+        if (pointerLink_ != nullptr) {
+            pointerLink_->scroll(event.code == ']' ? 1 : -1);
+        }
+        return true;
+    }
     if (event.code == keycode::kEsc) {
         stopPointer();
         return true;
@@ -171,7 +178,12 @@ bool RemoteScreen::handlePointerKey(const KeyEvent& event) {
 
 void RemoteScreen::send(RemoteKey key) {
     const uint32_t now = millis();
-    Transport* used = app_.router().sendKey(key);
+    Transport* used = nullptr;
+    if (infraredOnly_) {
+        used = app_.ir().sendKey(key) ? static_cast<Transport*>(&app_.ir()) : nullptr;
+    } else {
+        used = app_.router().sendKey(key);
+    }
     app_.keyClick();
 
     if (isDigitKey(key)) {
@@ -246,7 +258,7 @@ void RemoteScreen::tick() {
         KeyboardInput& keys = app_.keyboard();
         const bool anyArrow = keys.isHeld(keycode::kUp) || keys.isHeld(keycode::kDown) ||
                               keys.isHeld(keycode::kLeft) || keys.isHeld(keycode::kRight);
-        if (anyArrow && !keys.fnHeld()) {
+        if (anyArrow) {
             if (arrowHeldSince_ == 0) {
                 arrowHeldSince_ = now;
             }
@@ -272,6 +284,9 @@ void RemoteScreen::tick() {
 }
 
 const char* RemoteScreen::footer() const {
+    if (infraredOnly_) {
+        return str::kFooterServiceKeypad;
+    }
     return pointerActive_ ? str::kFooterPointer : str::kFooterRemote;
 }
 
@@ -286,9 +301,23 @@ void RemoteScreen::draw(M5Canvas& canvas, int top, int height) {
 }
 
 void RemoteScreen::drawIdle(M5Canvas& canvas, int top, int height) {
+    // Mode icon on the mode colour + mode name: which link is used is never in doubt.
+    const LinkMode mode = infraredOnly_ ? LinkMode::Ir : app_.settings().linkMode;
+    const int iconY = top + 19;
+    canvas.fillRoundRect(theme::kScreenWidth / 2 - 18, iconY - 15, 36, 30, 7, ui::modeColour(mode));
+    icons::draw(canvas, ui::modeIcon(mode), theme::kScreenWidth / 2, iconY, theme::kText, 0.62f);
+
+    if (infraredOnly_) {
+        painter::drawCenteredLines(canvas, top + 36, height - 36, str::kServiceKeypadTitle, str::kServiceKeypadText);
+        return;
+    }
     const Settings& settings = app_.settings();
-    String title = settings.tvName.isEmpty() ? String(str::kIdleTitle) : settings.tvName;
-    painter::drawCenteredLines(canvas, top, height, title.c_str(), str::kIdleHint);
+    String title = ui::modeTitle(mode);
+    if ((mode == LinkMode::Auto || mode == LinkMode::Lan) && !settings.tvHost.isEmpty()) {
+        title += ": ";
+        title += settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
+    }
+    painter::drawCenteredLines(canvas, top + 36, height - 36, title.c_str(), str::kIdleHint);
 }
 
 void RemoteScreen::drawFeedback(M5Canvas& canvas, int top, int height) {

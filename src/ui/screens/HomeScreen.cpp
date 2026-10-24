@@ -5,6 +5,7 @@
 #include "app/App.h"
 #include "app/Menus.h"
 #include "ui/Icons.h"
+#include "ui/ModeStyle.h"
 #include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
@@ -82,8 +83,12 @@ void HomeScreen::onKey(const KeyEvent& event) {
             move(1);
             return;
         case keycode::kDown:
-        case keycode::kTab:
             move(1);
+            return;
+        case keycode::kTab:
+            if (!event.repeat) {
+                app_.push(std::make_unique<HelpScreen>(app_));
+            }
             return;
         case keycode::kEnter:
         case keycode::kButtonG0:
@@ -147,7 +152,9 @@ void HomeScreen::draw(M5Canvas& canvas, int top, int height) {
     canvas.fillTriangle(kScreenWidth - 6, iconY, kScreenWidth - 12, iconY - 6, kScreenWidth - 12, iconY + 6,
                         kTextMuted);
 
-    canvas.fillRoundRect(centerX - 26 + offset, iconY - 22, 52, 44, 10, kSurface);
+    // Mode cards use the same colour as the status bar chip of that mode.
+    const uint16_t cardColour = card.kind == CardKind::Mode ? ui::modeColour(card.mode) : kSurface;
+    canvas.fillRoundRect(centerX - 26 + offset, iconY - 22, 52, 44, 10, cardColour);
     icons::draw(canvas, card.icon, centerX + offset, iconY, kText, 1.0f);
 
     canvas.setTextSize(1);

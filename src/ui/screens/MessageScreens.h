@@ -30,6 +30,21 @@ private:
     std::function<void()> onCancel_;
 };
 
+// Small pop-up card with a title and up to two lines of text; any of enter/esc/del closes it.
+class InfoScreen : public Screen {
+public:
+    InfoScreen(App& app, String title, String body, String detail = String());
+
+    void onKey(const KeyEvent& event) override;
+    void draw(M5Canvas& canvas, int top, int height) override;
+    const char* footer() const override;
+
+private:
+    String title_;
+    String body_;
+    String detail_;
+};
+
 // Pairing with the TV over the network. Explains what to do on the TV for every state
 // (prompt, PIN, failure with reason) and returns to `returnTo` once paired.
 class TvPairingScreen : public Screen {

@@ -35,25 +35,42 @@ void SetupScreen::onEnter() {
 
 void SetupScreen::addStep(const char* label, const char* description, std::function<bool()> isDone,
                           std::function<void()> action, std::function<String()> value, bool required) {
-    steps_.push_back({isDone, required});
+    const size_t index = steps_.size();
+    steps_.push_back({label, isDone, required});
     if (!value) {
-        value = [isDone]() { return String(isDone() ? str::kStepDone : str::kStepTodo); };
+        value = [isDone]() { return isDone() ? String(str::kStepDone) : String(); };
     }
-    items_.push_back({label, value, action, nullptr, description});
+    // Later steps stay greyed out until every earlier required step is done.
+    auto unlocked = [this, index]() { return firstOpenStepBefore(index) < 0; };
+    auto reason = [this, index]() { return lockedReason(firstOpenStepBefore(index)); };
+    items_.push_back({label, value, action, nullptr, description, unlocked, reason});
+}
+
+int SetupScreen::firstOpenStepBefore(size_t index) const {
+    for (size_t i = 0; i < index && i < steps_.size(); ++i) {
+        if (steps_[i].required && !steps_[i].isDone()) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+String SetupScreen::lockedReason(int openStep) const {
+    if (openStep < 0) {
+        return String();
+    }
+    return String(str::kStepFirstPrefix) + steps_[openStep].label;
 }
 
 void SetupScreen::addStartRow() {
     items_.push_back({str::kStepStart, nullptr,
                       [this]() {
-                          if (!allDone()) {
-                              app_.toast(str::kStepFinishFirst);
-                              return;
-                          }
                           App& app = app_;
                           app.pop();  // replace the checklist with the remote
                           app.push(std::make_unique<RemoteScreen>(app));
                       },
-                      nullptr, str::kStepStartText});
+                      nullptr, str::kStepStartText, [this]() { return allDone(); },
+                      [this]() { return lockedReason(firstOpenStepBefore(steps_.size())); }});
 }
 
 bool SetupScreen::allDone() const {
@@ -98,7 +115,7 @@ void SetupScreen::build() {
                         tvPrepared_ = true;
                         selectFirstOpenStep();
                     },
-                    [this]() { return String(tvPrepared_ || app_.settings().bleSetupDone ? str::kStepOk : str::kStepTodo); });
+                    [this]() { return String(tvPrepared_ || app_.settings().bleSetupDone ? str::kStepOk : ""); });
             addStep(str::kStepBlePair, str::kStepBlePairText, [&app]() { return app.settings().bleSetupDone; },
                     [&app]() { app.push(std::make_unique<BlePairingScreen>(app)); });
             break;
@@ -108,7 +125,7 @@ void SetupScreen::build() {
                     [&app]() { app.usb().begin(); },
                     [&app]() {
                         if (app.usb().isMounted()) return String(str::kBleConnected);
-                        return String(app.usb().started() ? str::kUsbWaiting : str::kStepTodo);
+                        return String(app.usb().started() ? str::kUsbWaiting : "");
                     });
             break;
 
@@ -119,7 +136,7 @@ void SetupScreen::build() {
                     [&app]() { app.push(std::make_unique<WifiScanScreen>(app)); },
                     [&app]() -> String {
                         if (app.wifi().isConnected()) return app.settings().wifiSsid;
-                        return app.settings().wifiSsid.isEmpty() ? String(str::kStepTodo) : String("...");
+                        return app.settings().wifiSsid.isEmpty() ? String() : String("...");
                     });
             addStep(str::kStepTvPrep, str::kStepTvPrepText,
                     [this]() { return tvPrepared_ || !app_.settings().tvClientKey.isEmpty(); },
@@ -129,7 +146,7 @@ void SetupScreen::build() {
                     },
                     [this]() {
                         return String(tvPrepared_ || !app_.settings().tvClientKey.isEmpty() ? str::kStepOk
-                                                                                            : str::kStepTodo);
+                                                                                            : "");
                     });
             addStep(str::kStepFindTv, str::kStepFindTvText, [&app]() { return !app.settings().tvHost.isEmpty(); },
                     [this]() {
@@ -141,7 +158,7 @@ void SetupScreen::build() {
                     },
                     [&app]() -> String {
                         const Settings& s = app.settings();
-                        if (s.tvHost.isEmpty()) return String(str::kStepTodo);
+                        if (s.tvHost.isEmpty()) return String();
                         return s.tvName.isEmpty() ? s.tvHost : s.tvName;
                     });
             addStep(str::kStepPair, str::kStepPairText, [&app]() { return app.settings().isSetUp(LinkMode::Auto); },

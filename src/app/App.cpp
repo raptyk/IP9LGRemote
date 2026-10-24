@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "ui/ModeStyle.h"
 #include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
@@ -265,25 +266,28 @@ void App::drawStatusBar() {
     using namespace theme;
     canvas_.fillRect(0, 0, kScreenWidth, kStatusBarHeight, kSurface);
 
-    // Link mode chip.
-    const char* mode = screens_.back()->showsLinkStatus() ? linkModeName(settings_.linkMode) : "LG";
+    // Link mode chip: mode name on the mode's own colour (blue Wi-Fi, orange IR, ...).
+    const Screen& screen = *screens_.back();
+    const LinkMode shownMode = screen.forcesInfrared() ? LinkMode::Ir : settings_.linkMode;
+    const char* mode = screen.showsLinkStatus() ? linkModeName(shownMode) : "LG";
+    const uint16_t chipColour = screen.showsLinkStatus() ? ui::modeColour(shownMode) : kAccent;
     canvas_.setFont(&fonts::Font0);
     canvas_.setTextSize(1);
-    const int chipWidth = canvas_.textWidth(mode) + 10;
-    canvas_.fillRoundRect(3, 3, chipWidth, kStatusBarHeight - 6, 3, kAccent);
+    const int chipWidth = canvas_.textWidth(mode) + 12;
+    canvas_.fillRoundRect(2, 2, chipWidth, kStatusBarHeight - 4, 4, chipColour);
     canvas_.setTextColor(kText);
     canvas_.setTextDatum(middle_center);
-    canvas_.drawString(mode, 3 + chipWidth / 2, kStatusBarHeight / 2);
+    canvas_.drawString(mode, 2 + chipWidth / 2, kStatusBarHeight / 2);
 
     // Link state: coloured dot + what the remote talks to right now.
     uint16_t dotColour = kOk;
     String description;
     const String tvLabel = settings_.tvName.isEmpty() ? settings_.tvHost : settings_.tvName;
-    if (!screens_.back()->showsLinkStatus()) {
+    if (!screen.showsLinkStatus()) {
         description = str::kHomeStatus;
         dotColour = kAccent;
     } else {
-        switch (settings_.linkMode) {
+        switch (shownMode) {
             case LinkMode::Ir:
                 description = str::kInfrared;
                 break;
@@ -311,7 +315,7 @@ void App::drawStatusBar() {
         }
     }
 
-    const int dotX = 3 + chipWidth + 8;
+    const int dotX = 2 + chipWidth + 8;
     canvas_.fillCircle(dotX, kStatusBarHeight / 2, 3, dotColour);
     canvas_.setTextDatum(middle_left);
     canvas_.setTextColor(kText);
