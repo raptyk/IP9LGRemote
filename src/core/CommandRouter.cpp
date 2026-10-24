@@ -6,6 +6,7 @@
 #include "ipcontrol/IpControlClient.h"
 #include "ir/IrTransport.h"
 #include "ui/Strings.h"
+#include "usb/UsbHidTransport.h"
 #include "webos/WakeOnLan.h"
 #include "webos/WebOsClient.h"
 
@@ -30,8 +31,9 @@ bool isIrPreferredInAuto(RemoteKey key) {
 
 }  // namespace
 
-CommandRouter::CommandRouter(IrTransport& ir, WebOsClient& lan, IpControlClient& ipControl, BleHidTransport& ble)
-    : ir_(ir), lan_(lan), ipControl_(ipControl), ble_(ble) {}
+CommandRouter::CommandRouter(IrTransport& ir, WebOsClient& lan, IpControlClient& ipControl, BleHidTransport& ble,
+                             UsbHidTransport& usb)
+    : ir_(ir), lan_(lan), ipControl_(ipControl), ble_(ble), usb_(usb) {}
 
 void CommandRouter::setMode(LinkMode mode) {
     mode_ = mode;
@@ -45,12 +47,16 @@ void CommandRouter::setMode(LinkMode mode) {
     } else {
         ble_.end();
     }
+    if (mode_ == LinkMode::Usb) {
+        usb_.begin();  // stays enumerated afterwards: USB cannot be restarted without a reboot
+    }
 }
 
 Transport& CommandRouter::primary() const {
     switch (mode_) {
         case LinkMode::Ir: return ir_;
         case LinkMode::Ble: return ble_;
+        case LinkMode::Usb: return usb_;
         case LinkMode::Lan:
             if (!lan_.isReady() && ipControl_.isReady()) {
                 return ipControl_;
@@ -75,6 +81,10 @@ int CommandRouter::candidatesFor(RemoteKey key, Transport* out[kMaxCandidates]) 
             return 1;
         case LinkMode::Ble:
             out[0] = &ble_;
+            out[1] = &ir_;
+            return 2;
+        case LinkMode::Usb:
+            out[0] = &usb_;
             out[1] = &ir_;
             return 2;
         case LinkMode::Lan:
@@ -138,6 +148,7 @@ Transport* CommandRouter::sendPower(RemoteKey key) {
 Transport* CommandRouter::pointerTransport() const {
     switch (mode_) {
         case LinkMode::Ble: return ble_.isReady() ? &ble_ : nullptr;
+        case LinkMode::Usb: return usb_.isReady() ? &usb_ : nullptr;
         case LinkMode::Ir: return nullptr;
         case LinkMode::Lan:
         case LinkMode::Auto:
@@ -153,6 +164,7 @@ const char* CommandRouter::pointerUnavailableReason() const {
     switch (mode_) {
         case LinkMode::Ir: return str::kNeedsLanOrBle;
         case LinkMode::Ble: return str::kBleNotConnected;
+        case LinkMode::Usb: return str::kUsbNotConnected;
         default: return lan_.status() == WebOsStatus::NotConfigured ? str::kSetUpTvFirst : str::kTvNotConnected;
     }
 }

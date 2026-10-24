@@ -53,21 +53,41 @@ size_t brightnessIndex(uint8_t brightness) {
 }
 
 std::unique_ptr<Screen> makeTvMenu(App& app) {
+    auto menu = std::make_unique<ListScreen>(app, str::kTvTitle);
+    Screen* self = menu.get();
     std::vector<ListItem> items;
-    items.push_back({str::kTvSearch, nullptr, [&app]() { app.push(std::make_unique<TvSearchScreen>(app)); }, nullptr});
-    items.push_back({str::kTvManual, [&app]() { return app.settings().tvHost.isEmpty() ? String(str::kNotSet) : app.settings().tvHost; },
-                     [&app]() {
-                         app.push(std::make_unique<TextFieldScreen>(
-                             app, str::kTvIpPrompt, app.settings().tvHost,
-                             [&app](const String& host) {
-                                 IPAddress address;
-                                 if (address.fromString(host)) {
-                                     selectTv(app, host, String());
-                                 }
-                             },
-                             false, 15));
+    items.push_back({str::kTvSearch, nullptr,
+                     [&app, self]() {
+                         if (!app.wifi().isConnected()) {
+                             app.toast(str::kTvNeedWifi);
+                             return;
+                         }
+                         app.push(std::make_unique<TvSearchScreen>(app, self));
                      },
-                     nullptr});
+                     nullptr, str::kTvSearchText});
+    items.push_back({str::kTvManual,
+                     [&app]() { return app.settings().tvHost.isEmpty() ? String(str::kNotSet) : app.settings().tvHost; },
+                     [&app, self]() { promptTvAddress(app, self); }, nullptr, str::kTvManualText});
+    items.push_back({str::kTvPairingMethod,
+                     [&app]() { return String(app.settings().tvUsePin ? str::kTvMethodPin : str::kTvMethodPrompt); },
+                     nullptr,
+                     [&app](int) {
+                         app.settings().tvUsePin = !app.settings().tvUsePin;
+                         app.saveSettings();
+                     },
+                     str::kTvPairingMethodText});
+    items.push_back({str::kTvPairAgain, nullptr,
+                     [&app, self]() {
+                         if (app.settings().tvHost.isEmpty()) {
+                             app.toast(str::kSetUpTvFirst);
+                             return;
+                         }
+                         app.settings().tvClientKey = "";
+                         app.saveSettings();
+                         app.applyTvSettings();
+                         app.push(std::make_unique<TvPairingScreen>(app, self));
+                     },
+                     nullptr, str::kTvPairAgainText});
     items.push_back({str::kTvKeycode,
                      [&app]() { return app.settings().tvKeycode.isEmpty() ? String(str::kNotSet) : String("********"); },
                      [&app]() {
@@ -86,10 +106,11 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
                                  app.applyTvSettings();
                                  app.toast(str::kSaved);
                              },
-                             false, 8));
+                             false, 8, str::kTvKeycodeHint));
                      },
-                     nullptr});
-    items.push_back({str::kTvMac, [&app]() { return app.settings().tvMac.isEmpty() ? String(str::kNotSet) : app.settings().tvMac; },
+                     nullptr, str::kTvKeycodeText});
+    items.push_back({str::kTvMac,
+                     [&app]() { return app.settings().tvMac.isEmpty() ? String(str::kNotSet) : app.settings().tvMac; },
                      [&app]() {
                          app.push(std::make_unique<TextFieldScreen>(
                              app, str::kTvMacPrompt, app.settings().tvMac,
@@ -104,21 +125,9 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
                                  app.applyTvSettings();
                                  app.toast(str::kSaved);
                              },
-                             false, 17));
+                             false, 17, str::kTvMacHint));
                      },
-                     nullptr});
-    items.push_back({str::kTvPairAgain, nullptr,
-                     [&app]() {
-                         if (app.settings().tvHost.isEmpty()) {
-                             app.toast(str::kSetUpTvFirst);
-                             return;
-                         }
-                         app.settings().tvClientKey = "";
-                         app.saveSettings();
-                         app.applyTvSettings();
-                         app.push(std::make_unique<TvPairingScreen>(app));
-                     },
-                     nullptr});
+                     nullptr, str::kTvMacText});
     items.push_back({str::kTvForget, nullptr,
                      [&app]() {
                          app.push(std::make_unique<ConfirmScreen>(app, str::kTvForget, app.settings().tvHost, [&app]() {
@@ -128,8 +137,11 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
                              app.toast(str::kSaved);
                          }));
                      },
-                     nullptr});
-    return std::make_unique<ListScreen>(app, str::kTvTitle, std::move(items));
+                     nullptr, str::kTvForgetText});
+    for (ListItem& item : items) {
+        menu->items().push_back(std::move(item));
+    }
+    return menu;
 }
 
 std::unique_ptr<Screen> makeBleKeyTestMenu(App& app) {
@@ -166,42 +178,47 @@ std::unique_ptr<Screen> makeBleKeyTestMenu(App& app) {
                              }
                              app.toast(String(str::kSent) + probe.label);
                          },
-                         nullptr});
+                         nullptr, str::kBleKeyTestText});
     }
     return std::make_unique<ListScreen>(app, str::kBleKeyTest, std::move(items));
 }
 
 std::unique_ptr<Screen> makeBleMenu(App& app) {
     std::vector<ListItem> items;
-    items.push_back({str::kBlePair, nullptr, [&app]() { app.push(std::make_unique<BlePairingScreen>(app)); }, nullptr});
-    items.push_back({str::kBleKeyTest, nullptr, [&app]() { app.push(makeBleKeyTestMenu(app)); }, nullptr});
+    items.push_back({str::kBlePair, nullptr, [&app]() { app.push(std::make_unique<BlePairingScreen>(app)); }, nullptr,
+                     str::kBlePairText});
+    items.push_back(
+        {str::kBleKeyTest, nullptr, [&app]() { app.push(makeBleKeyTestMenu(app)); }, nullptr, str::kBleKeyTestText});
     items.push_back({str::kBleForget, nullptr,
                      [&app]() {
                          app.push(std::make_unique<ConfirmScreen>(app, str::kBleForget, String(), [&app]() {
                              app.ble().begin();
                              app.ble().forgetBonds();
+                             app.settings().bleSetupDone = false;
+                             app.saveSettings();
                              app.toast(str::kSaved);
                          }));
                      },
-                     nullptr});
-    return std::make_unique<ListScreen>(app, str::kBleTitle, std::move(items));
+                     nullptr, str::kBleForgetText});
+    return std::make_unique<ListScreen>(app, str::kCardBleTitle, std::move(items));
 }
 
 std::unique_ptr<Screen> makeServiceMenu(App& app) {
     struct ServiceCode {
         const char* label;
+        const char* description;
         RemoteKey key;
         bool risky;
     };
     static constexpr ServiceCode kCodes[] = {
-        {"Power on", RemoteKey::PowerOn, false},
-        {"Power off", RemoteKey::PowerOff, false},
-        {"HDMI 1", RemoteKey::Hdmi1, false},
-        {"HDMI 2", RemoteKey::Hdmi2, false},
-        {"HDMI 3", RemoteKey::Hdmi3, false},
-        {"HDMI 4", RemoteKey::Hdmi4, false},
-        {"In Start (service menu)", RemoteKey::InStart, true},
-        {"EZ Adjust (service menu)", RemoteKey::EzAdjust, true},
+        {"Power on", "Discrete IR code: only turns the TV on.", RemoteKey::PowerOn, false},
+        {"Power off", "Discrete IR code: only turns the TV off.", RemoteKey::PowerOff, false},
+        {"HDMI 1", "Switches straight to HDMI 1 (IR).", RemoteKey::Hdmi1, false},
+        {"HDMI 2", "Switches straight to HDMI 2 (IR).", RemoteKey::Hdmi2, false},
+        {"HDMI 3", "Switches straight to HDMI 3 (IR).", RemoteKey::Hdmi3, false},
+        {"HDMI 4", "Switches straight to HDMI 4 (IR).", RemoteKey::Hdmi4, false},
+        {"In Start (service)", "Factory service menu. Wrong changes can break the TV!", RemoteKey::InStart, true},
+        {"EZ Adjust (service)", "Factory adjust menu. Wrong changes can break the TV!", RemoteKey::EzAdjust, true},
     };
     std::vector<ListItem> items;
     for (const ServiceCode& code : kCodes) {
@@ -217,26 +234,28 @@ std::unique_ptr<Screen> makeServiceMenu(App& app) {
                                  send();
                              }
                          },
-                         nullptr});
+                         nullptr, code.description});
     }
     return std::make_unique<ListScreen>(app, str::kServiceTitle, std::move(items));
 }
 
 std::unique_ptr<Screen> makeAboutMenu(App& app) {
     std::vector<ListItem> items;
-    items.push_back({str::kAboutVersion, []() { return String(APP_VERSION); }, nullptr, nullptr});
-    items.push_back({str::kAboutDevice, [&app]() { return String(app.device().modelName()); }, nullptr, nullptr});
-    items.push_back({str::kAboutImu, [&app]() { return onOff(app.device().hasImu()); }, nullptr, nullptr});
+    items.push_back({str::kAboutVersion, []() { return String(APP_VERSION); }, nullptr, nullptr, String()});
+    items.push_back({str::kAboutDevice, [&app]() { return String(app.device().modelName()); }, nullptr, nullptr,
+                     String()});
+    items.push_back({str::kAboutImu, [&app]() { return onOff(app.device().hasImu()); }, nullptr, nullptr, String()});
     items.push_back({str::kAboutIp, [&app]() { return app.wifi().isConnected() ? app.wifi().localIp() : String("-"); },
-                     nullptr, nullptr});
-    items.push_back({str::kAboutHeap, []() { return String(ESP.getFreeHeap() / 1024) + " KB"; }, nullptr, nullptr});
-    items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); }, nullptr, nullptr});
+                     nullptr, nullptr, String()});
+    items.push_back(
+        {str::kAboutHeap, []() { return String(ESP.getFreeHeap() / 1024) + " KB"; }, nullptr, nullptr, String()});
+    items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); }, nullptr, nullptr, String()});
     return std::make_unique<ListScreen>(app, str::kAboutTitle, std::move(items));
 }
 
 }  // namespace
 
-void selectTv(App& app, const String& host, const String& name) {
+void selectTv(App& app, const String& host, const String& name, Screen* returnTo) {
     Settings& settings = app.settings();
     if (settings.tvHost != host) {
         settings.tvClientKey = "";  // a different TV needs its own pairing
@@ -244,13 +263,25 @@ void selectTv(App& app, const String& host, const String& name) {
     }
     settings.tvHost = host;
     settings.tvName = name;
-    if (settings.linkMode == LinkMode::Ir || settings.linkMode == LinkMode::Ble) {
-        settings.linkMode = LinkMode::Auto;
-        app.router().setMode(settings.linkMode);
-    }
     app.saveSettings();
     app.applyTvSettings();
-    app.push(std::make_unique<TvPairingScreen>(app));
+    app.push(std::make_unique<TvPairingScreen>(app, returnTo));
+}
+
+void promptTvAddress(App& app, Screen* returnTo) {
+    app.push(std::make_unique<TextFieldScreen>(
+        app, str::kTvIpPrompt, app.settings().tvHost,
+        [&app, returnTo](const String& text) {
+            String host = text;
+            host.trim();
+            IPAddress address;
+            if (!address.fromString(host)) {
+                app.toast(str::kTvIpInvalid);
+                return;
+            }
+            selectTv(app, host, String(), returnTo);
+        },
+        false, 15, str::kTvIpHint));
 }
 
 std::unique_ptr<Screen> makeMainMenu(App& app) {
@@ -260,51 +291,58 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
                          if (app.settings().wifiSsid.isEmpty()) return String(str::kNotSet);
                          return app.settings().wifiSsid + (app.wifi().isConnected() ? "" : " (...)");
                      },
-                     [&app]() { app.push(std::make_unique<WifiScanScreen>(app)); }, nullptr});
+                     [&app]() { app.push(std::make_unique<WifiScanScreen>(app)); }, nullptr, str::kMenuWifiText});
     items.push_back({str::kMenuTv,
                      [&app]() -> String {
                          const Settings& s = app.settings();
                          if (s.tvHost.isEmpty()) return String(str::kNotSet);
                          return s.tvName.isEmpty() ? s.tvHost : s.tvName;
                      },
-                     [&app]() { app.push(makeTvMenu(app)); }, nullptr});
+                     [&app]() { app.push(makeTvMenu(app)); }, nullptr, str::kMenuTvText});
     items.push_back({str::kMenuBluetooth,
                      [&app]() -> String {
                          if (!app.ble().started()) return String(str::kBleOff);
                          return String(app.ble().isConnected() ? str::kBleConnected : str::kBleWaiting);
                      },
-                     [&app]() { app.push(makeBleMenu(app)); }, nullptr});
+                     [&app]() { app.push(makeBleMenu(app)); }, nullptr, str::kMenuBluetoothText});
     items.push_back({str::kMenuPointer, [&app]() { return String(app.settings().pointerSpeed) + " / 5"; }, nullptr,
                      [&app](int delta) {
                          Settings& s = app.settings();
                          s.pointerSpeed = constrain(s.pointerSpeed + delta, 1, 5);
                          app.saveSettings();
                          app.applyDisplaySettings();
-                     }});
+                     },
+                     str::kMenuPointerText});
     items.push_back({str::kMenuInvertY, [&app]() { return onOff(app.settings().pointerInvertY); }, nullptr,
                      [&app](int) {
                          app.settings().pointerInvertY = !app.settings().pointerInvertY;
                          app.saveSettings();
                          app.applyDisplaySettings();
-                     }});
-    items.push_back({str::kMenuBrightness,
-                     [&app]() { return String(brightnessIndex(app.settings().brightness) + 1) + " / " + kBrightnessLevelCount; },
-                     nullptr,
-                     [&app](int delta) {
-                         const int index = constrain(static_cast<int>(brightnessIndex(app.settings().brightness)) + delta, 0,
-                                                     static_cast<int>(kBrightnessLevelCount) - 1);
-                         app.settings().brightness = kBrightnessLevels[index];
-                         app.saveSettings();
-                         app.applyDisplaySettings();
-                     }});
+                     },
+                     str::kMenuInvertYText});
+    items.push_back(
+        {str::kMenuBrightness,
+         [&app]() { return String(brightnessIndex(app.settings().brightness) + 1) + " / " + kBrightnessLevelCount; },
+         nullptr,
+         [&app](int delta) {
+             const int index = constrain(static_cast<int>(brightnessIndex(app.settings().brightness)) + delta, 0,
+                                         static_cast<int>(kBrightnessLevelCount) - 1);
+             app.settings().brightness = kBrightnessLevels[index];
+             app.saveSettings();
+             app.applyDisplaySettings();
+         },
+         str::kMenuBrightnessText});
     items.push_back({str::kMenuKeyClick, [&app]() { return onOff(app.settings().keyClick); }, nullptr,
                      [&app](int) {
                          app.settings().keyClick = !app.settings().keyClick;
                          app.saveSettings();
                          app.keyClick();
-                     }});
-    items.push_back({str::kMenuService, nullptr, [&app]() { app.push(makeServiceMenu(app)); }, nullptr});
-    items.push_back({str::kMenuAbout, nullptr, [&app]() { app.push(makeAboutMenu(app)); }, nullptr});
+                     },
+                     str::kMenuKeyClickText});
+    items.push_back({str::kMenuService, nullptr, [&app]() { app.push(makeServiceMenu(app)); }, nullptr,
+                     str::kMenuServiceText});
+    items.push_back(
+        {str::kMenuAbout, nullptr, [&app]() { app.push(makeAboutMenu(app)); }, nullptr, str::kMenuAboutText});
     return std::make_unique<ListScreen>(app, str::kMenuTitle, std::move(items));
 }
 
@@ -315,9 +353,11 @@ std::unique_ptr<Screen> makeAppsMenu(App& app) {
         items.push_back({shortcut.title, [hasIr]() { return String(hasIr ? "IR" : ""); },
                          [&app, shortcut]() {
                              // Prefer the network (any installed app); IR covers the keys printed on LG remotes.
-                             if (app.settings().linkMode != LinkMode::Ir && app.webos().isReady()) {
+                             const bool network = app.settings().linkMode == LinkMode::Auto ||
+                                                  app.settings().linkMode == LinkMode::Lan;
+                             if (network && app.webos().isReady()) {
                                  app.webos().launchApp(shortcut.webOsId);
-                             } else if (app.settings().linkMode != LinkMode::Ir && app.ipControl().isReady()) {
+                             } else if (network && app.ipControl().isReady()) {
                                  app.ipControl().launchApp(shortcut.webOsId);
                              } else if (shortcut.irCommand != 0) {
                                  app.ir().sendRaw(shortcut.irCommand);
@@ -325,10 +365,10 @@ std::unique_ptr<Screen> makeAppsMenu(App& app) {
                                  app.toast(str::kTvNotConnected);
                                  return;
                              }
-                             app.popToRoot();
+                             app.pop();
                              app.toast(String(str::kLaunching) + shortcut.title);
                          },
-                         nullptr});
+                         nullptr, hasIr ? str::kAppsIrText : str::kAppsLanText});
     }
     return std::make_unique<ListScreen>(app, str::kAppsTitle, std::move(items));
 }

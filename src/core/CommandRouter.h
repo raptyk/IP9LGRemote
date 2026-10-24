@@ -11,13 +11,15 @@ class IrTransport;
 class WebOsClient;
 class IpControlClient;
 class BleHidTransport;
+class UsbHidTransport;
 
 // Decides which transport delivers each command, based on the selected link mode.
 // The network ("LAN") link prefers the webOS API and falls back to LG IP Control;
 // infrared is the universal fallback: it works with every LG TV, even when it is off.
 class CommandRouter {
 public:
-    CommandRouter(IrTransport& ir, WebOsClient& lan, IpControlClient& ipControl, BleHidTransport& ble);
+    CommandRouter(IrTransport& ir, WebOsClient& lan, IpControlClient& ipControl, BleHidTransport& ble,
+                  UsbHidTransport& usb);
 
     void setMode(LinkMode mode);
     LinkMode mode() const { return mode_; }
@@ -48,6 +50,7 @@ private:
     WebOsClient& lan_;
     IpControlClient& ipControl_;
     BleHidTransport& ble_;
+    UsbHidTransport& usb_;
     LinkMode mode_ = LinkMode::Auto;
     String wakeMac_;
 };

@@ -17,6 +17,7 @@
 #include "ir/IrTransport.h"
 #include "net/WifiService.h"
 #include "ui/Screen.h"
+#include "usb/UsbHidTransport.h"
 #include "webos/TvDiscovery.h"
 #include "webos/WebOsClient.h"
 
@@ -34,6 +35,8 @@ public:
     void push(std::unique_ptr<Screen> screen);
     void pop();
     void popToRoot();
+    // Pops screens until `target` is on top (only the top screen if `target` is not on the stack).
+    void popTo(Screen* target);
     void invalidate() { dirty_ = true; }
 
     // Short message shown above the footer for ~1.8 s.
@@ -47,7 +50,8 @@ public:
     void applyWifiSettings();
     void applyTvSettings();
     void applyDisplaySettings();
-    void cycleLinkMode();
+    // Makes `mode` the active link and remembers it.
+    void selectMode(LinkMode mode);
 
     Device& device() { return device_; }
     CommandRouter& router() { return router_; }
@@ -55,6 +59,7 @@ public:
     WebOsClient& webos() { return webos_; }
     IpControlClient& ipControl() { return ipControl_; }
     BleHidTransport& ble() { return ble_; }
+    UsbHidTransport& usb() { return usb_; }
     WifiService& wifi() { return wifi_; }
     TvDiscovery& discovery() { return discovery_; }
     AirMouse& airMouse() { return airMouse_; }
@@ -76,6 +81,7 @@ private:
     WebOsClient webos_;
     IpControlClient ipControl_;
     BleHidTransport ble_;
+    UsbHidTransport usb_;
     WifiService wifi_;
     TvDiscovery discovery_;
     AirMouse airMouse_;

@@ -24,6 +24,9 @@ public:
     // Draws the content area (between status bar and footer).
     virtual void draw(M5Canvas& canvas, int top, int height) = 0;
     virtual const char* footer() const { return nullptr; }
+    // False for screens that are not tied to a link (home launcher): the status bar
+    // then shows the app name instead of the link state.
+    virtual bool showsLinkStatus() const { return true; }
 
 protected:
     App& app_;

@@ -4,10 +4,12 @@
 
 #include <M5Cardputer.h>
 
+#include <algorithm>
+
 #include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
-#include "ui/screens/RemoteScreen.h"
+#include "ui/screens/HomeScreen.h"
 
 namespace lgremote {
 
@@ -17,19 +19,21 @@ constexpr uint32_t kToastDurationMs = 1800;
 constexpr uint32_t kStatusRefreshMs = 500;
 constexpr uint8_t kDimBrightness = 24;
 constexpr uint32_t kMinFrameIntervalMs = 33;  // ~30 fps is plenty and leaves CPU time for input
+constexpr int kBatteryWidth = 52;             // battery icon + "100%" on the right of the status bar
 
 }  // namespace
 
 App::App()
     : ir_(pins::kIrTx),
       ble_(str::kBleDeviceName),
-      router_(ir_, webos_, ipControl_, ble_),
+      router_(ir_, webos_, ipControl_, ble_, usb_),
       canvas_(&M5.Display) {}
 
 void App::begin() {
     auto config = M5.config();
     config.internal_imu = true;
     config.internal_mic = false;
+    config.serial_baudrate = 0;  // UART0 shares GPIO43/44 with the speaker clock and the IR LED
     M5Cardputer.begin(config, true);
     M5.Display.setRotation(1);
 
@@ -51,11 +55,13 @@ void App::begin() {
     ipControl_.begin();
     applyWifiSettings();
     applyTvSettings();
-    router_.setMode(settings_.linkMode);
+    // Bluetooth / USB start only when the user picks them on the home screen.
+    const bool networkMode = settings_.linkMode == LinkMode::Auto || settings_.linkMode == LinkMode::Lan;
+    router_.setMode(networkMode ? settings_.linkMode : LinkMode::Ir);
 
     log_i("%s %s on %s, IMU: %s", str::kAppName, APP_VERSION, device_.modelName(), device_.hasImu() ? "yes" : "no");
 
-    push(std::make_unique<RemoteScreen>(*this));
+    push(std::make_unique<HomeScreen>(*this));
     lastInputAt_ = millis();
 }
 
@@ -92,7 +98,7 @@ void App::push(std::unique_ptr<Screen> screen) {
 
 void App::pop() {
     if (screens_.size() <= 1) {
-        return;  // the remote screen is the root and never closes
+        return;  // the home screen is the root and never closes
     }
     retired_.push_back(std::move(screens_.back()));
     screens_.pop_back();
@@ -102,6 +108,21 @@ void App::pop() {
 
 void App::popToRoot() {
     while (screens_.size() > 1) {
+        retired_.push_back(std::move(screens_.back()));
+        screens_.pop_back();
+    }
+    screens_.back()->onEnter();
+    dirty_ = true;
+}
+
+void App::popTo(Screen* target) {
+    const bool onStack = std::any_of(screens_.begin(), screens_.end(),
+                                     [target](const std::unique_ptr<Screen>& screen) { return screen.get() == target; });
+    if (!onStack) {
+        pop();
+        return;
+    }
+    while (screens_.size() > 1 && screens_.back().get() != target) {
         retired_.push_back(std::move(screens_.back()));
         screens_.pop_back();
     }
@@ -130,7 +151,8 @@ void App::applyWifiSettings() {
 }
 
 void App::applyTvSettings() {
-    webos_.configure(settings_.tvHost, settings_.tvClientKey);
+    webos_.configure(settings_.tvHost, settings_.tvClientKey,
+                     settings_.tvUsePin ? PairingMethod::Pin : PairingMethod::Prompt);
     ipControl_.configure(settings_.tvHost, settings_.tvKeycode);
     router_.setWakeMac(settings_.tvMac);
 }
@@ -141,10 +163,9 @@ void App::applyDisplaySettings() {
     airMouse_.setInvertY(settings_.pointerInvertY);
 }
 
-void App::cycleLinkMode() {
-    uint8_t next = (static_cast<uint8_t>(settings_.linkMode) + 1) % static_cast<uint8_t>(LinkMode::Count);
-    settings_.linkMode = static_cast<LinkMode>(next);
-    router_.setMode(settings_.linkMode);
+void App::selectMode(LinkMode mode) {
+    settings_.linkMode = mode;
+    router_.setMode(mode);
     saveSettings();
     dirty_ = true;
 }
@@ -197,6 +218,16 @@ void App::syncServices() {
         router_.setWakeMac(value);
         saveSettings();
     }
+
+    // A first successful connection completes the Bluetooth / USB setup.
+    if (!settings_.bleSetupDone && ble_.isConnected()) {
+        settings_.bleSetupDone = true;
+        saveSettings();
+    }
+    if (!settings_.usbSetupDone && usb_.isMounted()) {
+        settings_.usbSetupDone = true;
+        saveSettings();
+    }
 }
 
 void App::updatePower() {
@@ -235,7 +266,7 @@ void App::drawStatusBar() {
     canvas_.fillRect(0, 0, kScreenWidth, kStatusBarHeight, kSurface);
 
     // Link mode chip.
-    const char* mode = linkModeName(settings_.linkMode);
+    const char* mode = screens_.back()->showsLinkStatus() ? linkModeName(settings_.linkMode) : "LG";
     canvas_.setFont(&fonts::Font0);
     canvas_.setTextSize(1);
     const int chipWidth = canvas_.textWidth(mode) + 10;
@@ -244,43 +275,48 @@ void App::drawStatusBar() {
     canvas_.setTextDatum(middle_center);
     canvas_.drawString(mode, 3 + chipWidth / 2, kStatusBarHeight / 2);
 
-    // Link state: coloured dot + description.
-    Transport& link = router_.primary();
+    // Link state: coloured dot + what the remote talks to right now.
     uint16_t dotColour = kOk;
-    String description = link.name();
-    if (&link == static_cast<Transport*>(&webos_)) {
-        if (webos_.isReady()) {
-            description += "  ";
-            description += settings_.tvName.isEmpty() ? settings_.tvHost : settings_.tvName;
-        } else {
-            description += "  ";
-            description += webOsStatusText(webos_.status());
+    String description;
+    const String tvLabel = settings_.tvName.isEmpty() ? settings_.tvHost : settings_.tvName;
+    if (!screens_.back()->showsLinkStatus()) {
+        description = str::kHomeStatus;
+        dotColour = kAccent;
+    } else {
+        switch (settings_.linkMode) {
+            case LinkMode::Ir:
+                description = str::kInfrared;
+                break;
+            case LinkMode::Ble:
+                description = ble_.isConnected() ? str::kBleConnected : str::kBleWaiting;
+                dotColour = ble_.isConnected() ? kOk : kWarn;
+                break;
+            case LinkMode::Usb:
+                description = usb_.isMounted() ? str::kBleConnected : str::kUsbNotConnected;
+                dotColour = usb_.isMounted() ? kOk : kWarn;
+                break;
+            case LinkMode::Auto:
+            case LinkMode::Lan:
+            default:
+                if (webos_.isReady() || ipControl_.isReady()) {
+                    description = tvLabel;
+                } else {
+                    description = webOsStatusText(webos_.status());
+                    if (settings_.linkMode == LinkMode::Auto) {
+                        description += str::kViaIrSuffix;
+                    }
+                    dotColour = webos_.state() == LinkState::Connecting ? kWarn : kError;
+                }
+                break;
         }
-    } else if (&link == static_cast<Transport*>(&ipControl_)) {
-        description += "  ";
-        description += settings_.tvName.isEmpty() ? settings_.tvHost : settings_.tvName;
-    } else if (&link == static_cast<Transport*>(&ble_)) {
-        description += "  ";
-        description += ble_.isConnected() ? str::kBleConnected : str::kBleWaiting;
-    } else if (settings_.linkMode == LinkMode::Auto && !settings_.tvHost.isEmpty()) {
-        description += "  ";
-        description += webOsStatusText(webos_.status());
-    }
-    switch (link.state()) {
-        case LinkState::Ready: dotColour = kOk; break;
-        case LinkState::Connecting: dotColour = kWarn; break;
-        case LinkState::Off:
-        case LinkState::Error: dotColour = kError; break;
-    }
-    if (settings_.linkMode == LinkMode::Auto && &link == static_cast<Transport*>(&ir_)) {
-        dotColour = settings_.tvHost.isEmpty() ? kOk : kWarn;  // IR works, network fallback pending
     }
 
     const int dotX = 3 + chipWidth + 8;
     canvas_.fillCircle(dotX, kStatusBarHeight / 2, 3, dotColour);
     canvas_.setTextDatum(middle_left);
     canvas_.setTextColor(kText);
-    painter::drawClippedText(canvas_, description, dotX + 7, kStatusBarHeight / 2, 150 - chipWidth);
+    painter::drawClippedText(canvas_, description, dotX + 7, kStatusBarHeight / 2,
+                             kScreenWidth - kBatteryWidth - (dotX + 7));
 
     // Battery.
     const int battery = device_.batteryPercent();
@@ -306,17 +342,29 @@ void App::drawToast() {
     if (toastUntil_ == 0) {
         return;
     }
-    canvas_.setFont(&fonts::FreeSans9pt7b);
+    canvas_.setFont(&fonts::Font2);
     canvas_.setTextSize(1);
-    const int width = min<int>(canvas_.textWidth(toastText_) + 16, kScreenWidth - 8);
-    const int height = 22;
+    const int maxTextWidth = kScreenWidth - 24;
+    std::vector<String> lines = painter::wrapText(canvas_, toastText_, maxTextWidth);
+    if (lines.size() > 2) {
+        lines.resize(2);
+    }
+    int textWidth = 0;
+    for (const String& line : lines) {
+        textWidth = max<int>(textWidth, canvas_.textWidth(line));
+    }
+    const int lineHeight = 15;
+    const int width = min<int>(textWidth + 16, kScreenWidth - 8);
+    const int height = static_cast<int>(lines.size()) * lineHeight + 8;
     const int x = (kScreenWidth - width) / 2;
     const int y = kScreenHeight - kFooterHeight - height - 4;
     canvas_.fillRoundRect(x, y, width, height, 6, kSurfaceHigh);
     canvas_.drawRoundRect(x, y, width, height, 6, kAccent);
     canvas_.setTextColor(kText);
-    canvas_.setTextDatum(middle_center);
-    canvas_.drawString(toastText_, kScreenWidth / 2, y + height / 2 + 1);
+    canvas_.setTextDatum(top_center);
+    for (size_t i = 0; i < lines.size(); ++i) {
+        painter::drawClippedText(canvas_, lines[i], kScreenWidth / 2, y + 4 + i * lineHeight, maxTextWidth);
+    }
 }
 
 }  // namespace lgremote

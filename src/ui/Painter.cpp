@@ -54,9 +54,9 @@ int drawTitle(M5Canvas& canvas, int top, const char* title) {
     canvas.setTextSize(1);
     canvas.setTextColor(kText);
     canvas.setTextDatum(top_left);
-    canvas.drawString(title, kPadding, top + 3);
-    canvas.drawFastHLine(kPadding, top + 21, kScreenWidth - 2 * kPadding, kSurfaceHigh);
-    return top + 24;
+    drawClippedText(canvas, title, kPadding, top + 2, kScreenWidth - 2 * kPadding);
+    canvas.drawFastHLine(kPadding, top + 18, kScreenWidth - 2 * kPadding, kSurfaceHigh);
+    return top + 20;
 }
 
 void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected) {
@@ -83,27 +83,79 @@ void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const
     drawClippedText(canvas, label, kPadding + 2, centerY, labelWidth);
 }
 
-void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* line1, const char* line2,
-                       const char* line3) {
-    const char* lines[] = {line1, line2, line3};
-    int count = 0;
-    for (const char* line : lines) {
-        if (line != nullptr) {
-            ++count;
+std::vector<String> wrapText(M5Canvas& canvas, const String& text, int maxWidth) {
+    std::vector<String> lines;
+    String line;
+    int start = 0;
+    const int length = text.length();
+    while (start <= length) {
+        int end = text.indexOf(' ', start);
+        if (end < 0) {
+            end = length;
+        }
+        const String word = text.substring(start, end);
+        const String candidate = line.isEmpty() ? word : line + " " + word;
+        if (canvas.textWidth(candidate) <= maxWidth || line.isEmpty()) {
+            line = candidate;
+        } else {
+            lines.push_back(line);
+            line = word;
+        }
+        start = end + 1;
+    }
+    if (!line.isEmpty()) {
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+int drawWrappedText(M5Canvas& canvas, const String& text, int x, int y, int maxWidth, int lineHeight, int maxLines) {
+    std::vector<String> lines = wrapText(canvas, text, maxWidth);
+    const int count = min<int>(lines.size(), maxLines);
+    for (int i = 0; i < count; ++i) {
+        String line = lines[i];
+        if (i == count - 1 && static_cast<int>(lines.size()) > count) {
+            line += " ...";  // more text than room: show that something is cut
+        }
+        drawClippedText(canvas, line, x, y + i * lineHeight, maxWidth);
+    }
+    return count * lineHeight;
+}
+
+void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* title, const char* body,
+                       const char* detail) {
+    constexpr int kTitleHeight = 20;
+    constexpr int kBodyLineHeight = 15;
+    const int maxWidth = kScreenWidth - 2 * kPadding;
+
+    // Measure first so the block can be centred vertically.
+    canvas.setTextSize(1);
+    canvas.setFont(&fonts::Font2);
+    std::vector<String> bodyLines;
+    for (const char* part : {body, detail}) {
+        if (part != nullptr && part[0] != '\0') {
+            for (const String& line : wrapText(canvas, part, maxWidth)) {
+                bodyLines.push_back(line);
+            }
         }
     }
-    const int lineHeight = 18;
-    int y = top + (height - count * lineHeight) / 2 + lineHeight / 2;
-    canvas.setTextSize(1);
-    canvas.setTextDatum(middle_center);
-    for (int i = 0; i < 3; ++i) {
-        if (lines[i] == nullptr) {
-            continue;
-        }
-        canvas.setFont(i == 0 ? &fonts::FreeSansBold9pt7b : &fonts::FreeSans9pt7b);
-        canvas.setTextColor(i == 0 ? kText : kTextMuted);
-        drawClippedText(canvas, lines[i], kScreenWidth / 2, y, kScreenWidth - 2 * kPadding);
-        y += lineHeight;
+    const int maxBodyLines = max(0, (height - kTitleHeight) / kBodyLineHeight);
+    const int bodyCount = min<int>(bodyLines.size(), maxBodyLines);
+    const int blockHeight = (title != nullptr ? kTitleHeight : 0) + bodyCount * kBodyLineHeight;
+    int y = top + (height - blockHeight) / 2;
+
+    canvas.setTextDatum(top_center);
+    if (title != nullptr) {
+        canvas.setFont(&fonts::FreeSansBold9pt7b);
+        canvas.setTextColor(kText);
+        drawClippedText(canvas, title, kScreenWidth / 2, y + 2, maxWidth);
+        y += kTitleHeight;
+    }
+    canvas.setFont(&fonts::Font2);
+    canvas.setTextColor(kTextMuted);
+    for (int i = 0; i < bodyCount; ++i) {
+        drawClippedText(canvas, bodyLines[i], kScreenWidth / 2, y, maxWidth);
+        y += kBodyLineHeight;
     }
 }
 

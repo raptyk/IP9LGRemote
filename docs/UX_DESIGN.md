@@ -20,27 +20,65 @@ Design goals for a remote control running on a 240×135 screen with a 56-key key
 6. **Discoverable.** The footer always names the 3 most useful hints; the full
    cheat sheet is one key away (`Fn` + `h` or `?`).
 
+## Home screen (start)
+
+```
+┌──────────────────────────────────────────┐
+│ LG ● Choose a mode                ▮▮▮ 87% │  status bar (18 px)
+├──────────────────────────────────────────┤
+│ ◀  (ir)       ┌──────┐        (bt)    ▶  │  neighbours hint at sideways scrolling
+│               │ wifi │                   │  40 px icon of the selected card
+│               └──────┘                   │
+│              Wi-Fi remote                │  title
+│        ● Ready: Living room TV           │  green = ready, amber = setup needed
+│   Pointer, typing and apps over your     │  two-line explanation
+│   home network. Falls back to IR.        │
+├──────────────────────────────────────────┤
+│ < > choose  enter open  s setup          │  footer hints (16 px)
+└──────────────────────────────────────────┘
+```
+
+Cards: **Wi-Fi remote**, **IR remote**, **Bluetooth**, **USB cable**, **Settings**, **Help**.
+`,` `/` (or `;` `.`) move, `enter`/`G0` opens, `1`–`6` jump, `s` re-runs a mode's setup.
+The last used mode is preselected, so the usual start is a single `enter`.
+
+## First-run setup (checklists)
+
+A mode that is not configured opens a checklist instead of the remote. Each row is one
+step with its live state on the right (`To do`, `Done`, network name, `Connected`) and
+an explanation at the bottom. `enter` performs the step; after each step the cursor
+jumps to the next open one. **Start remote** works only when every step is done.
+
+| Mode | Steps |
+|---|---|
+| Wi-Fi remote | Connect to Wi-Fi → Prepare the TV (LG Connect Apps) → Find the TV (search / IP) → Pair (Allow or PIN) |
+| IR remote | Test infrared: sends VOL+ and asks "Did the TV volume go up?" |
+| Bluetooth | Check the TV (webOS 5+) → Pair (instructions + live status) |
+| USB cable | Connect the cable (USB starts, state turns `Connected` when the TV enumerates it) |
+
 ## Screen layout (Remote screen)
 
 ```
 ┌──────────────────────────────────────────┐
-│ AUTO ▸ LAN ● Living room TV       ▮▮▮ 87% │  status bar (16 px)
+│ WI-FI ● Living room TV            ▮▮▮ 87% │  status bar (18 px)
 ├──────────────────────────────────────────┤
 │                                          │
-│                 VOL +                    │  last action (large)
+│                 VOL +                    │  last action (18 pt, 12 pt if long)
 │              ▁▂▃▄▅▆▇ 24                   │  optional detail (volume level)
 │                                          │
 ├──────────────────────────────────────────┤
-│ tab link · opt menu · ? help             │  footer hints (14 px)
+│ opt home  ? help  a pointer              │  footer hints (16 px)
 └──────────────────────────────────────────┘
 ```
 
 - Status bar colour encodes link state: green = ready, amber = connecting,
-  red = unavailable (commands fall back to IR in AUTO).
+  red = unavailable; in the Wi-Fi mode the text adds "(IR)" while IR is used.
 - The action area flashes the accent colour for ~120 ms on every sent command
   (visual "click"), then shows the action name for 1.5 s.
 - Pointer mode replaces the action area with a crosshair indicator and the
-  hint `enter click · fn+▲▼ scroll · a exit`.
+  hint `enter click · fn+;. scroll · a exit`.
+- All texts are word-wrapped; `tools/check_text_fit.py` verifies every string with
+  the real font metrics (240 px width).
 
 ## Key map (Remote screen)
 
@@ -66,25 +104,24 @@ Design goals for a remote control running on a 240×135 screen with a 56-key key
 | `r` `g` `y` `b` | Red / Green / Yellow / Blue | |
 | `a` or `G0` button | Pointer mode on/off | air mouse on ADV, arrow keys everywhere |
 | `fn` + `;` / `.` | Scroll up / down | pointer and list scrolling |
-| `t` | Type text on the TV | LAN or BLE only |
-| `l` | App launcher | LAN only |
-| `tab` | Next link: AUTO → IR → LAN → BLE | |
-| `opt` | Menu (settings) | |
+| `t` | Type text on the TV | Wi-Fi, Bluetooth, USB |
+| `l` | App launcher | network; Netflix / Prime / Disney+ also over IR |
+| `opt` / `tab` | Back to the home screen | |
 | `?` / `fn`+`h` | Help (cheat sheet) | |
 
 ## Links (transports)
 
-- **AUTO** (default): Power goes over IR (works while the TV is off, needs no
-  pairing); everything else goes over the network when connected, otherwise IR.
-  Works out of the box: with nothing configured it is a plain IR remote.
+- **Wi-Fi remote** (`AUTO`): Power goes over IR (works while the TV is off, needs no
+  pairing); everything else goes over the webOS API when connected, then LG IP Control
+  (if a keycode is set), then IR – key by key.
 - **IR**: NEC, address 0x04. Works with every LG TV. No pointer, no text.
-- **LAN**: webOS second-screen API (SSAP) – pointer, text, apps, volume level.
-  Falls back to LG IP Control (if a keycode is set) and then to IR, key by key.
-- **BLE (beta)**: the Cardputer becomes a Bluetooth keyboard + mouse + media remote
-  for TVs that accept Bluetooth peripherals. The network link pauses meanwhile
-  (RAM). Keys the TV ignores over BLE still go out over IR.
+- **Bluetooth (beta)**: the Cardputer becomes a Bluetooth keyboard + mouse + media remote
+  for TVs with webOS 5+. The network link pauses meanwhile (RAM). Keys the TV ignores over
+  BLE still go out over IR.
+- **USB cable**: the same HID device over USB – LG TVs accept USB keyboards and mice since
+  2012, so this covers TVs without Bluetooth keyboard support.
 
-Every command shows which link delivered it ("via IR", "via LAN"), so fallbacks are
+Every command shows which link delivered it ("via IR", "via WI-FI"), so fallbacks are
 never a mystery.
 
 ## Apps (l)
@@ -105,14 +142,14 @@ moves the cursor (yaw → X, pitch → Y). On both models the arrow keys move th
 cursor with acceleration. `enter` clicks, `del` is still Back, `fn`+arrows
 scroll. Pointer mode exits on `a`, `G0`, `esc` or after 30 s of no motion.
 
-## Menu (opt)
+## Settings (home screen card)
 
-Flat list, one level deep, navigated with `;` `.` + `enter`, `del`/`esc` goes back:
+List navigated with `;` `.` + `enter`, `del`/`esc` goes back. The selected row's
+explanation is shown at the bottom (two lines), so no option needs a manual:
 
 1. **Wi-Fi** – scan, pick network, type password.
-2. **TV (network)** – search (SSDP) or type IP → pairing screen ("Accept the prompt
-   on your TV"), IP Control keycode, Wake-on-LAN MAC (learned automatically),
-   pair again, forget.
+2. **TV (network)** – search / IP address, pairing method (Prompt or PIN), pair again,
+   IP Control keycode, Wake-on-LAN MAC (learned automatically), forget.
 3. **Bluetooth (beta)** – pairing instructions with live status, key test, forget bonds.
 4. **Pointer speed** (1–5) and **Invert pointer Y** – adjusted with `,` `/`.
 5. **Brightness**, **Key click sound**.
@@ -120,6 +157,13 @@ Flat list, one level deep, navigated with `;` `.` + `enter`, `del`/`esc` goes ba
 7. **About** – version, device model, motion sensor, IP, free memory, author.
 
 Digits `1`–`9` jump straight to a menu row.
+
+## Pairing screen
+
+One screen for the whole network pairing, with a title and explanation per state:
+connecting (with the TV address), "Accept on your TV", "Enter the PIN" (opens a PIN field),
+"Pairing failed" / "TV not answering" with the reason and a checklist. `enter` retries,
+`p` switches between prompt and PIN pairing, `esc` goes back.
 
 ## Text entry (t)
 

@@ -7,16 +7,17 @@
 #include <functional>
 #include <vector>
 
+#include "net/WifiService.h"
 #include "ui/Screen.h"
 #include "ui/screens/ListScreen.h"
-#include "net/WifiService.h"
 
 namespace lgremote {
 
 // Yes / no question. Enter confirms, esc / del cancels.
 class ConfirmScreen : public Screen {
 public:
-    ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm);
+    ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm,
+                  std::function<void()> onCancel = nullptr);
 
     void onKey(const KeyEvent& event) override;
     void draw(M5Canvas& canvas, int top, int height) override;
@@ -26,13 +27,14 @@ private:
     String question_;
     String detail_;
     std::function<void()> onConfirm_;
+    std::function<void()> onCancel_;
 };
 
-// Shown while pairing with the TV over the network: explains the prompt on the TV
-// and closes itself once the TV accepted.
+// Pairing with the TV over the network. Explains what to do on the TV for every state
+// (prompt, PIN, failure with reason) and returns to `returnTo` once paired.
 class TvPairingScreen : public Screen {
 public:
-    using Screen::Screen;
+    TvPairingScreen(App& app, Screen* returnTo);
 
     void onEnter() override;
     void onKey(const KeyEvent& event) override;
@@ -41,7 +43,12 @@ public:
     const char* footer() const override;
 
 private:
+    void askForPin();
+    void switchMethod();
+
+    Screen* returnTo_;
     uint32_t readySince_ = 0;
+    bool pinAsked_ = false;
 };
 
 // Step-by-step instructions for pairing the Bluetooth HID mode with the TV.
@@ -57,6 +64,7 @@ public:
 
 private:
     bool wasConnected_ = false;
+    uint32_t connectedAt_ = 0;
 };
 
 // Scans for Wi-Fi networks and asks for the password of the chosen one.
@@ -81,7 +89,7 @@ private:
 // Searches the LAN for webOS TVs (SSDP) and offers manual IP entry.
 class TvSearchScreen : public ListScreen {
 public:
-    explicit TvSearchScreen(App& app);
+    TvSearchScreen(App& app, Screen* returnTo);
 
     void onEnter() override;
     void tick() override;
@@ -91,6 +99,8 @@ protected:
 
 private:
     void rebuild();
+
+    Screen* returnTo_;
     bool started_ = false;
 };
 

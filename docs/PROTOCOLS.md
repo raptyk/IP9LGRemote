@@ -73,6 +73,15 @@ Used by the LG ThinQ app, Home Assistant (aiowebostv), PyWebOSTV, LGWebOSRemote,
    Responses: `response` with `pairingType:"PROMPT"` (prompt shown), then `registered` with
    `client-key` (store it), or `error` (declined / rejected).
 
+**PIN pairing** **[V]** (ConnectSDK `WebOSTVServiceSocketClient`): `register` with
+`pairingType:"PIN"` makes the TV show a code; the client sends
+`{"type":"request","uri":"ssap://pairing/setPin","payload":{"pin":"…"}}` and receives
+`registered`. Useful when no *Allow* prompt appears.
+
+**Pitfall found on hardware** (links2004/arduinoWebSockets): `begin()` resets the
+"last failure" time to 0 and `loop()` waits `reconnectInterval` since then before the first
+attempt – with a huge interval the client never connects. Set a normal interval *before* `begin()`.
+
 **Manifest** **[V]** – the well-known *signed* "com.lge.test / LG Remote App" manifest is
 **blacklisted** since 2026 (`403 blacklisted certificate`, LGTVCompanion#351, aiowebostv#719).
 Use an **unsigned** manifest with all permissions in the outer `permissions` array
@@ -132,7 +141,19 @@ Reference: <https://github.com/WesSouza/lgtv-ip-control>. Enabled on webOS 23+ i
 No TLS, no pairing prompt, unaffected by the SSAP lockdown – but no pointer or text input.
 The firmware uses it as fallback of the LAN link.
 
-## 5. Bluetooth HID (generic keyboard / mouse)
+## 5. Bluetooth / USB HID (generic keyboard / mouse)
+
+Menu paths per webOS version (LG support pages):
+
+| webOS | Bluetooth keyboard / mouse |
+|---|---|
+| 22 / 23+ | Settings > All Settings > General > External Devices > Connect Bluetooth Controller |
+| 5.0 (2020) | Settings > All Settings > Connection > Device Connection Settings > Connect Bluetooth Controller |
+| 4.5 (2019) | only the LG Wireless Keyboard (Rolly): General > LG Wireless Keyboard |
+| ≤ 4.0 (2018 and older) | no menu for generic Bluetooth keyboards/mice |
+
+USB keyboards and mice work on LG Smart TVs released after 2012, so the firmware also offers
+the same HID device over the Cardputer's USB-C port (TinyUSB), which covers older webOS versions.
 
 LG officially supports Bluetooth keyboards and mice on Bluetooth-equipped models
 (*Settings > General > External Devices > Bluetooth Controller*), with a tested-device list.

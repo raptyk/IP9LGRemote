@@ -17,7 +17,7 @@ public:
     using SubmitHandler = std::function<void(const String& text)>;
 
     TextFieldScreen(App& app, String title, String initial, SubmitHandler onSubmit, bool secret = false,
-                    size_t maxLength = 64);
+                    size_t maxLength = 64, String hint = String());
 
     void onKey(const KeyEvent& event) override;
     void draw(M5Canvas& canvas, int top, int height) override;
@@ -26,6 +26,7 @@ public:
 private:
     String title_;
     String text_;
+    String hint_;  // shown under the field (ignored for secret fields, which show the reveal hint)
     SubmitHandler onSubmit_;
     bool secret_;
     bool reveal_ = false;  // fn + del toggles password visibility

@@ -10,8 +10,11 @@
 namespace lgremote {
 
 namespace {
-constexpr int kRowHeight = 20;
-}
+constexpr int kRowHeight = 18;
+constexpr int kDescriptionLineHeight = 10;
+constexpr int kDescriptionLines = 2;
+constexpr int kDescriptionHeight = kDescriptionLines * kDescriptionLineHeight + 4;
+}  // namespace
 
 ListScreen::ListScreen(App& app, String title, std::vector<ListItem> items)
     : Screen(app), title_(std::move(title)), items_(std::move(items)) {}
@@ -21,6 +24,16 @@ void ListScreen::setItems(std::vector<ListItem> items) {
     selected_ = constrain(selected_, 0, max(0, static_cast<int>(items_.size()) - 1));
     firstVisible_ = min(firstVisible_, selected_);
     app_.invalidate();
+}
+
+void ListScreen::select(int index) {
+    if (index >= 0 && index < static_cast<int>(items_.size())) {
+        selected_ = index;
+    }
+}
+
+void ListScreen::onBack() {
+    app_.pop();
 }
 
 void ListScreen::onKey(const KeyEvent& event) {
@@ -55,7 +68,7 @@ void ListScreen::onKey(const KeyEvent& event) {
         case keycode::kBackspace:
         case keycode::kEsc:
             if (!event.repeat) {
-                app_.pop();
+                onBack();
             }
             return;
         default:
@@ -82,13 +95,16 @@ const char* ListScreen::footer() const {
 }
 
 void ListScreen::draw(M5Canvas& canvas, int top, int height) {
+    using namespace theme;
     const int listTop = painter::drawTitle(canvas, top, title_.c_str());
-    const int listHeight = top + height - listTop;
+    const int bottom = top + height;
     if (items_.empty()) {
-        drawEmpty(canvas, listTop, listHeight);
+        drawEmpty(canvas, listTop, bottom - listTop);
         return;
     }
 
+    const bool hasDescription = !items_[selected_].description.isEmpty();
+    const int listHeight = bottom - listTop - (hasDescription ? kDescriptionHeight : 0);
     const int visible = max(1, listHeight / kRowHeight);
     if (selected_ < firstVisible_) {
         firstVisible_ = selected_;
@@ -106,7 +122,18 @@ void ListScreen::draw(M5Canvas& canvas, int top, int height) {
         painter::drawListRow(canvas, listTop + row * kRowHeight, kRowHeight - 1, item.label, value,
                              index == selected_);
     }
-    painter::drawScrollBar(canvas, listTop, listHeight, firstVisible_, visible, items_.size());
+    painter::drawScrollBar(canvas, listTop, visible * kRowHeight, firstVisible_, visible, items_.size());
+
+    if (hasDescription) {
+        const int descriptionTop = bottom - kDescriptionHeight + 2;
+        canvas.drawFastHLine(kPadding, descriptionTop - 2, kScreenWidth - 2 * kPadding, kSurfaceHigh);
+        canvas.setFont(&fonts::Font0);
+        canvas.setTextSize(1);
+        canvas.setTextColor(kTextMuted);
+        canvas.setTextDatum(top_left);
+        painter::drawWrappedText(canvas, items_[selected_].description, kPadding, descriptionTop + 1,
+                                 kScreenWidth - 2 * kPadding, kDescriptionLineHeight, kDescriptionLines);
+    }
 }
 
 void ListScreen::drawEmpty(M5Canvas& canvas, int top, int height) {

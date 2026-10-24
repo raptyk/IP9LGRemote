@@ -120,13 +120,10 @@ bool RemoteScreen::handleAction(const KeyEvent& event) {
     }
     switch (event.code) {
         case keycode::kTab:
-            app_.cycleLinkMode();
-            stopPointer();
-            app_.toast(String(linkModeName(app_.settings().linkMode)) + " link");
-            return true;
         case keycode::kOpt:
+            // Back to the home screen (mode choice, settings, help).
             stopPointer();
-            app_.push(makeMainMenu(app_));
+            app_.pop();
             return true;
         case keycode::kButtonG0:
         case 'a':
@@ -300,8 +297,12 @@ void RemoteScreen::drawFeedback(M5Canvas& canvas, int top, int height) {
     const int centerX = kScreenWidth / 2;
     const int centerY = top + height / 2 - 8;
 
-    canvas.setFont(&fonts::FreeSansBold18pt7b);
+    // Large font for short labels, a smaller one for long ones ("QUICK MENU") so nothing is cut.
     canvas.setTextSize(1);
+    canvas.setFont(&fonts::FreeSansBold18pt7b);
+    if (canvas.textWidth(label_) > kScreenWidth - 40) {
+        canvas.setFont(&fonts::FreeSansBold12pt7b);
+    }
     const int labelWidth = min<int>(canvas.textWidth(label_) + 28, kScreenWidth - 12);
     if (age < kFlashMs && !lastFailed_) {
         canvas.fillRoundRect(centerX - labelWidth / 2, centerY - 22, labelWidth, 44, 10, kAccent);

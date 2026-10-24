@@ -10,10 +10,11 @@
 namespace lgremote {
 
 TextFieldScreen::TextFieldScreen(App& app, String title, String initial, SubmitHandler onSubmit, bool secret,
-                                 size_t maxLength)
+                                 size_t maxLength, String hint)
     : Screen(app),
       title_(std::move(title)),
       text_(std::move(initial)),
+      hint_(std::move(hint)),
       onSubmit_(std::move(onSubmit)),
       secret_(secret),
       maxLength_(maxLength) {}
@@ -62,7 +63,7 @@ void TextFieldScreen::draw(M5Canvas& canvas, int top, int height) {
     using namespace theme;
     const int contentTop = painter::drawTitle(canvas, top, title_.c_str());
 
-    const int boxY = contentTop + 12;
+    const int boxY = contentTop + 6;
     const int boxHeight = 30;
     canvas.fillRoundRect(kPadding, boxY, kScreenWidth - 2 * kPadding, boxHeight, 5, kSurface);
     canvas.drawRoundRect(kPadding, boxY, kScreenWidth - 2 * kPadding, boxHeight, 5, kAccent);
@@ -93,13 +94,14 @@ void TextFieldScreen::draw(M5Canvas& canvas, int top, int height) {
     }
     app_.invalidate();  // caret blink
 
-    if (secret_) {
-        canvas.setFont(&fonts::Font0);
-        canvas.setTextColor(kTextMuted);
-        canvas.setTextDatum(top_left);
-        canvas.drawString(str::kRevealHint, kPadding, boxY + boxHeight + 8);
-    }
-    (void)height;
+    // Explanation under the field: what to type and where to find it.
+    canvas.setFont(&fonts::Font0);
+    canvas.setTextColor(kTextMuted);
+    canvas.setTextDatum(top_left);
+    const String hint = secret_ ? String(str::kRevealHint) : hint_;
+    const int hintTop = boxY + boxHeight + 6;
+    const int lines = max(0, (top + height - hintTop) / 10);
+    painter::drawWrappedText(canvas, hint, kPadding, hintTop, kScreenWidth - 2 * kPadding, 10, lines);
 }
 
 }  // namespace lgremote

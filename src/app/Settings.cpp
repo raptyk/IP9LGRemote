@@ -12,10 +12,11 @@ constexpr const char* kNamespace = "lgremote";
 
 const char* linkModeName(LinkMode mode) {
     switch (mode) {
-        case LinkMode::Auto: return "AUTO";
+        case LinkMode::Auto: return "WI-FI";
         case LinkMode::Ir: return "IR";
         case LinkMode::Lan: return "LAN";
-        case LinkMode::Ble: return "BLE";
+        case LinkMode::Ble: return "BT";
+        case LinkMode::Usb: return "USB";
         default: return "?";
     }
 }
@@ -34,6 +35,10 @@ void Settings::load() {
     tvMac = prefs.getString("tv_mac", "");
     tvClientKey = prefs.getString("tv_key", "");
     tvKeycode = prefs.getString("tv_ipc", "");
+    tvUsePin = prefs.getBool("tv_pin", tvUsePin);
+    irSetupDone = prefs.getBool("setup_ir", irSetupDone);
+    bleSetupDone = prefs.getBool("setup_ble", bleSetupDone);
+    usbSetupDone = prefs.getBool("setup_usb", usbSetupDone);
     pointerSpeed = constrain(prefs.getUChar("ptr_speed", pointerSpeed), 1, 5);
     pointerInvertY = prefs.getBool("ptr_inv_y", pointerInvertY);
     brightness = prefs.getUChar("bright", brightness);
@@ -57,6 +62,10 @@ void Settings::save() const {
     prefs.putString("tv_mac", tvMac);
     prefs.putString("tv_key", tvClientKey);
     prefs.putString("tv_ipc", tvKeycode);
+    prefs.putBool("tv_pin", tvUsePin);
+    prefs.putBool("setup_ir", irSetupDone);
+    prefs.putBool("setup_ble", bleSetupDone);
+    prefs.putBool("setup_usb", usbSetupDone);
     prefs.putUChar("ptr_speed", pointerSpeed);
     prefs.putBool("ptr_inv_y", pointerInvertY);
     prefs.putUChar("bright", brightness);
@@ -72,6 +81,18 @@ void Settings::forgetTv() {
     tvMac = "";
     tvClientKey = "";
     tvKeycode = "";
+    tvUsePin = false;
+}
+
+bool Settings::isSetUp(LinkMode mode) const {
+    switch (mode) {
+        case LinkMode::Ir: return irSetupDone;
+        case LinkMode::Ble: return bleSetupDone;
+        case LinkMode::Usb: return usbSetupDone;
+        case LinkMode::Auto:
+        case LinkMode::Lan: return !tvHost.isEmpty() && (!tvClientKey.isEmpty() || !tvKeycode.isEmpty());
+        default: return false;
+    }
 }
 
 }  // namespace lgremote

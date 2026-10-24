@@ -4,6 +4,8 @@
 
 #include <M5GFX.h>
 
+#include <vector>
+
 namespace lgremote::painter {
 
 // Draws text at (x, y) with the current datum, truncating with "..." to fit `maxWidth`.
@@ -18,9 +20,15 @@ int drawTitle(M5Canvas& canvas, int top, const char* title);
 // One list row; `selected` rows are highlighted.
 void drawListRow(M5Canvas& canvas, int y, int height, const String& label, const String& value, bool selected);
 
-// Up to three centred lines of text in the given area.
-void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* line1, const char* line2 = nullptr,
-                       const char* line3 = nullptr);
+// Splits text into lines that fit `maxWidth` with the canvas' current font (word wrap).
+std::vector<String> wrapText(M5Canvas& canvas, const String& text, int maxWidth);
+
+// Word-wrapped text with the current font and datum; returns the height used.
+int drawWrappedText(M5Canvas& canvas, const String& text, int x, int y, int maxWidth, int lineHeight, int maxLines);
+
+// Bold title plus word-wrapped body text (smaller font), centred in the given area.
+void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* title, const char* body = nullptr,
+                       const char* detail = nullptr);
 
 // Small vertical scroll indicator on the right edge.
 void drawScrollBar(M5Canvas& canvas, int top, int height, int first, int visible, int total);

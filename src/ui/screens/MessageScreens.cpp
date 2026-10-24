@@ -13,25 +13,34 @@ namespace lgremote {
 
 namespace {
 constexpr uint32_t kPairedCloseDelayMs = 1200;
-}
+constexpr uint32_t kBleConnectedCloseDelayMs = 1500;
+}  // namespace
 
 // ---------------------------------------------------------------- ConfirmScreen
 
-ConfirmScreen::ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm)
-    : Screen(app), question_(std::move(question)), detail_(std::move(detail)), onConfirm_(std::move(onConfirm)) {}
+ConfirmScreen::ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm,
+                             std::function<void()> onCancel)
+    : Screen(app),
+      question_(std::move(question)),
+      detail_(std::move(detail)),
+      onConfirm_(std::move(onConfirm)),
+      onCancel_(std::move(onCancel)) {}
 
 void ConfirmScreen::onKey(const KeyEvent& event) {
     if (event.repeat) {
         return;
     }
+    std::function<void()> action;
     if (event.code == keycode::kEnter || event.code == 'y') {
-        std::function<void()> action = onConfirm_;
-        app_.pop();
-        if (action) {
-            action();
-        }
+        action = onConfirm_;
     } else if (event.code == keycode::kEsc || event.code == keycode::kBackspace || event.code == 'n') {
-        app_.pop();
+        action = onCancel_;
+    } else {
+        return;
+    }
+    app_.pop();
+    if (action) {
+        action();
     }
 }
 
@@ -45,65 +54,120 @@ void ConfirmScreen::draw(M5Canvas& canvas, int top, int height) {
 
 // ---------------------------------------------------------------- TvPairingScreen
 
+TvPairingScreen::TvPairingScreen(App& app, Screen* returnTo) : Screen(app), returnTo_(returnTo) {}
+
 void TvPairingScreen::onEnter() {
     readySince_ = 0;
+}
+
+void TvPairingScreen::switchMethod() {
+    Settings& settings = app_.settings();
+    settings.tvUsePin = !settings.tvUsePin;
+    settings.tvClientKey = "";
+    app_.saveSettings();
+    app_.applyTvSettings();
+    pinAsked_ = false;
+    app_.toast(settings.tvUsePin ? str::kPairMethodPin : str::kPairMethodPrompt);
+}
+
+void TvPairingScreen::askForPin() {
+    pinAsked_ = true;
+    App& app = app_;
+    app.push(std::make_unique<TextFieldScreen>(
+        app, str::kPairPinPrompt, String(), [&app](const String& pin) { app.webos().submitPin(pin); }, false, 8,
+        str::kPairPinText));
 }
 
 void TvPairingScreen::onKey(const KeyEvent& event) {
     if (event.repeat) {
         return;
     }
-    WebOsClient& webos = app_.webos();
-    if (event.code == keycode::kEnter && webos.status() == WebOsStatus::Rejected) {
-        app_.applyTvSettings();  // retry: shows the prompt on the TV again
-        return;
-    }
-    if (event.code == keycode::kEsc || event.code == keycode::kBackspace || event.code == keycode::kEnter) {
-        app_.popToRoot();
+    const WebOsStatus status = app_.webos().status();
+    switch (event.code) {
+        case 'p':
+            switchMethod();
+            return;
+        case keycode::kEnter:
+            if (status == WebOsStatus::WaitingForPin) {
+                askForPin();
+            } else if (status == WebOsStatus::Rejected || status == WebOsStatus::Unreachable) {
+                app_.applyTvSettings();  // retry from scratch (shows the prompt again)
+            }
+            return;
+        case keycode::kEsc:
+        case keycode::kBackspace:
+            app_.pop();
+            return;
+        default:
+            return;
     }
 }
 
 void TvPairingScreen::tick() {
     WebOsClient& webos = app_.webos();
-    if (webos.status() == WebOsStatus::Ready) {
+    const WebOsStatus status = webos.status();
+    if (status == WebOsStatus::Ready) {
         if (readySince_ == 0) {
             readySince_ = millis();
             webos.showToast(str::kPairToast);
         } else if (millis() - readySince_ > kPairedCloseDelayMs) {
-            app_.popToRoot();
-            app_.toast(str::kPairDone);
+            App& app = app_;
+            app.popTo(returnTo_);  // `this` is retired here
+            app.toast(str::kPairDone);
             return;
         }
+    } else if (status == WebOsStatus::WaitingForPin && !pinAsked_) {
+        askForPin();
+        return;
+    } else if (status != WebOsStatus::WaitingForPin) {
+        pinAsked_ = false;
     }
     app_.invalidate();  // spinner animation
 }
 
 const char* TvPairingScreen::footer() const {
-    return app_.webos().status() == WebOsStatus::Rejected ? str::kConfirmFooter : str::kFooterList;
+    switch (app_.webos().status()) {
+        case WebOsStatus::WaitingForUser: return str::kFooterPairingAccept;
+        case WebOsStatus::WaitingForPin: return str::kFooterPairingPin;
+        case WebOsStatus::Rejected:
+        case WebOsStatus::Unreachable: return str::kFooterPairingFailed;
+        default: return str::kFooterPairing;
+    }
 }
 
 void TvPairingScreen::draw(M5Canvas& canvas, int top, int height) {
-    const int contentTop = painter::drawTitle(canvas, top, str::kPairTitle);
-    const int contentHeight = top + height - contentTop;
     const WebOsStatus status = app_.webos().status();
+    const String error = app_.webos().lastError();
+    const String host = app_.settings().tvHost;
+    const int spinnerSpace = 14;
 
     switch (status) {
         case WebOsStatus::Ready:
-            painter::drawCenteredLines(canvas, contentTop, contentHeight, str::kPairDone,
-                                       app_.settings().tvName.c_str());
+            painter::drawCenteredLines(canvas, top, height, str::kPairDone, app_.settings().tvName.c_str());
             break;
         case WebOsStatus::WaitingForUser:
-            painter::drawCenteredLines(canvas, contentTop, contentHeight - 14, str::kPairAccept,
-                                       app_.settings().tvHost.c_str());
-            painter::drawSpinner(canvas, theme::kScreenWidth / 2, contentTop + contentHeight - 12);
+            painter::drawCenteredLines(canvas, top, height - spinnerSpace, str::kPairAcceptTitle,
+                                       str::kPairAcceptText);
+            painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 8);
+            break;
+        case WebOsStatus::WaitingForPin:
+            painter::drawCenteredLines(canvas, top, height, str::kPairPinTitle,
+                                       error.isEmpty() ? str::kPairPinText : error.c_str());
             break;
         case WebOsStatus::Rejected:
-            painter::drawCenteredLines(canvas, contentTop, contentHeight, str::kPairDeclined);
+            painter::drawCenteredLines(canvas, top, height, str::kPairFailedTitle, error.c_str(), str::kPairChecks);
+            break;
+        case WebOsStatus::Unreachable:
+            painter::drawCenteredLines(canvas, top, height, str::kPairUnreachableTitle,
+                                       (host + " - " + error).c_str(), str::kPairChecks);
+            break;
+        case WebOsStatus::NoNetwork:
+            painter::drawCenteredLines(canvas, top, height, str::kPairNoWifiTitle, str::kPairNoWifiText);
             break;
         default:
-            painter::drawCenteredLines(canvas, contentTop, contentHeight - 14, str::kPairConnecting,
-                                       webOsStatusText(status));
-            painter::drawSpinner(canvas, theme::kScreenWidth / 2, contentTop + contentHeight - 12);
+            painter::drawCenteredLines(canvas, top, height - spinnerSpace, str::kPairConnectingTitle,
+                                       host.c_str(), str::kPairConnectingText);
+            painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 8);
             break;
     }
 }
@@ -112,12 +176,11 @@ void TvPairingScreen::draw(M5Canvas& canvas, int top, int height) {
 
 void BlePairingScreen::onEnter() {
     if (app_.settings().linkMode != LinkMode::Ble) {
-        app_.settings().linkMode = LinkMode::Ble;
-        app_.router().setMode(LinkMode::Ble);
-        app_.saveSettings();
+        app_.selectMode(LinkMode::Ble);
     }
     app_.ble().startPairing();
     wasConnected_ = app_.ble().isConnected();
+    connectedAt_ = 0;
 }
 
 void BlePairingScreen::onKey(const KeyEvent& event) {
@@ -130,29 +193,35 @@ void BlePairingScreen::onKey(const KeyEvent& event) {
 void BlePairingScreen::tick() {
     const bool connected = app_.ble().isConnected();
     if (connected && !wasConnected_) {
+        connectedAt_ = millis();
         app_.toast(str::kBleConnected);
     }
     wasConnected_ = connected;
+    if (connectedAt_ != 0 && millis() - connectedAt_ > kBleConnectedCloseDelayMs) {
+        app_.pop();  // back to the checklist / menu
+        return;
+    }
     app_.invalidate();
 }
 
 const char* BlePairingScreen::footer() const {
-    return str::kFooterList;
+    return str::kFooterPairing;
 }
 
 void BlePairingScreen::draw(M5Canvas& canvas, int top, int height) {
     using namespace theme;
     const int contentTop = painter::drawTitle(canvas, top, str::kBleTitle);
-    canvas.setFont(&fonts::Font0);
+    canvas.setFont(&fonts::Font2);
     canvas.setTextSize(1);
     canvas.setTextDatum(top_left);
     canvas.setTextColor(kText);
-    canvas.drawString(str::kBleStep1, kPadding, contentTop + 6);
-    canvas.drawString(str::kBleStep2, kPadding, contentTop + 18);
-    canvas.drawString(str::kBleStep3, kPadding, contentTop + 30);
+    const int statusY = top + height - 9;
+    const int lines = (statusY - 8 - contentTop) / 14;
+    painter::drawWrappedText(canvas, str::kBleHowTo, kPadding, contentTop + 2, kScreenWidth - 2 * kPadding, 14,
+                             lines);
 
     const bool connected = app_.ble().isConnected();
-    const int statusY = top + height - 16;
+    canvas.setFont(&fonts::Font0);
     canvas.fillCircle(kPadding + 4, statusY, 4, connected ? kOk : kWarn);
     canvas.setTextDatum(middle_left);
     canvas.setTextColor(connected ? kOk : kTextMuted);
@@ -187,7 +256,8 @@ void WifiScanScreen::rebuild() {
     for (const WifiNetwork& network : networks_) {
         WifiNetwork copy = network;
         String signal = String(network.rssi) + " dBm" + (network.secured ? " *" : "");
-        items.push_back({network.ssid, [signal]() { return signal; }, [this, copy]() { choose(copy); }, nullptr});
+        items.push_back(
+            {network.ssid, [signal]() { return signal; }, [this, copy]() { choose(copy); }, nullptr, str::kWifiPickText});
     }
     items.push_back({str::kWifiRescan, nullptr,
                      [this]() {
@@ -195,7 +265,7 @@ void WifiScanScreen::rebuild() {
                          setItems({});
                          app_.wifi().startScan();
                      },
-                     nullptr});
+                     nullptr, String()});
     if (!app_.settings().wifiSsid.isEmpty()) {
         items.push_back({str::kWifiForget, nullptr,
                          [this]() {
@@ -205,7 +275,7 @@ void WifiScanScreen::rebuild() {
                              app_.applyWifiSettings();
                              app_.pop();
                          },
-                         nullptr});
+                         nullptr, String()});
     }
     setItems(std::move(items));
 }
@@ -218,9 +288,9 @@ void WifiScanScreen::choose(const WifiNetwork& network) {
         app.settings().wifiPassword = password;
         app.saveSettings();
         app.applyWifiSettings();
-        app.popToRoot();
         app.toast(str::kWifiConnecting);
     };
+    app.pop();  // close the network list; the password field (if any) opens in its place
     if (!network.secured) {
         connect("");
         return;
@@ -232,7 +302,7 @@ void WifiScanScreen::choose(const WifiNetwork& network) {
 void WifiScanScreen::drawEmpty(M5Canvas& canvas, int top, int height) {
     if (app_.wifi().scanInProgress()) {
         painter::drawCenteredLines(canvas, top, height - 16, str::kWifiScanning);
-        painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 14);
+        painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 10);
     } else {
         painter::drawCenteredLines(canvas, top, height, str::kWifiNoNetworks);
     }
@@ -240,7 +310,7 @@ void WifiScanScreen::drawEmpty(M5Canvas& canvas, int top, int height) {
 
 // ---------------------------------------------------------------- TvSearchScreen
 
-TvSearchScreen::TvSearchScreen(App& app) : ListScreen(app, str::kTvSearch) {}
+TvSearchScreen::TvSearchScreen(App& app, Screen* returnTo) : ListScreen(app, str::kTvSearch), returnTo_(returnTo) {}
 
 void TvSearchScreen::onEnter() {
     if (!started_) {
@@ -268,30 +338,21 @@ void TvSearchScreen::tick() {
 void TvSearchScreen::rebuild() {
     std::vector<ListItem> items;
     App& app = app_;
+    Screen* returnTo = returnTo_;
     for (const DiscoveredTv& tv : app.discovery().results()) {
         const DiscoveredTv copy = tv;
         items.push_back({tv.name, [copy]() { return copy.host; },
-                         [&app, copy]() { selectTv(app, copy.host, copy.name); }, nullptr});
+                         [&app, copy, returnTo]() { selectTv(app, copy.host, copy.name, returnTo); }, nullptr,
+                         str::kTvSearchResultText});
     }
-    items.push_back({str::kTvManual, nullptr,
-                     [&app]() {
-                         app.push(std::make_unique<TextFieldScreen>(
-                             app, str::kTvIpPrompt, app.settings().tvHost,
-                             [&app](const String& host) {
-                                 IPAddress address;
-                                 if (address.fromString(host)) {
-                                     selectTv(app, host, String());
-                                 }
-                             },
-                             false, 15));
-                     },
-                     nullptr});
+    items.push_back({str::kTvManual, nullptr, [&app, returnTo]() { promptTvAddress(app, returnTo); }, nullptr,
+                     str::kTvManualText});
     setItems(std::move(items));
 }
 
 void TvSearchScreen::drawEmpty(M5Canvas& canvas, int top, int height) {
     painter::drawCenteredLines(canvas, top, height - 16, str::kTvSearching);
-    painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 14);
+    painter::drawSpinner(canvas, theme::kScreenWidth / 2, top + height - 10);
 }
 
 }  // namespace lgremote
