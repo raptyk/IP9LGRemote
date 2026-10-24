@@ -183,6 +183,8 @@ glow in a dim living room. Settings > Status light switches it off.
 | steady dim glow, mode colour | pointer mode is on |
 | short red blink every 10 s | battery at 10 % or less |
 
+Driven on GPIO21 with the Arduino core RMT driver (NeoPixel timing). M5.Led cannot be
+used with Arduino core 2.x: M5Unified's RMT LED bus is empty for ESP-IDF 4.x.
 On the Cardputer ADV the LED power switch shares GPIO38 with the display backlight,
 so the LED may stay dark while the screen is off.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2 – 2026-10-25
+
+- Fixed: the status light still stayed dark. M5Unified's LED driver has no RMT
+  implementation for ESP-IDF 4.x (Arduino core 2.x) and silently sends nothing; the LED is now
+  driven with the Arduino core RMT driver and NeoPixel timing (like `neopixelWrite()` and the
+  MicroPython NeoPixel example), 32-bit frames, brighter flashes.
+
 ## 1.3.1 – 2026-10-25
 
 - Fixed: the status light stayed dark on the Cardputer ADV. Its LED is an SK6812 RGBW that

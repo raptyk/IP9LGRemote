@@ -4,11 +4,8 @@
 
 #include <stdint.h>
 
-#include <memory>
+struct rmt_obj_s;  // Arduino core RMT channel (esp32-hal-rmt.h)
 
-namespace m5 {
-class LedBus_RMT;
-}
 
 namespace lgremote {
 
@@ -20,14 +17,11 @@ enum class LedPattern : uint8_t {
 };
 
 // RGB status LED on GPIO21 (WS2812 on the Cardputer, SK6812 RGBW on the Cardputer ADV),
-// driven through M5Unified's RMT bus.
+// driven by the RMT peripheral.
 // A background pattern plus short one-shot signals (flashes, blink bursts) on top of it.
 // Colours are 0xRRGGBB.
 class StatusLed {
 public:
-    StatusLed();
-    ~StatusLed();
-
     void begin();
     void setEnabled(bool enabled);
     bool enabled() const { return enabled_; }
@@ -42,11 +36,11 @@ public:
     void loop();
 
 private:
-    static constexpr uint8_t kMaxLevel = 64;  // of 255: visible in daylight, not glaring at night
+    static constexpr uint8_t kMaxLevel = 110;  // of 255: visible in daylight, not glaring at night
 
     void show(uint32_t colour, uint8_t level);
 
-    std::unique_ptr<m5::LedBus_RMT> bus_;
+    rmt_obj_s* rmt_ = nullptr;
     bool available_ = false;
     bool enabled_ = true;
     LedPattern pattern_ = LedPattern::Off;

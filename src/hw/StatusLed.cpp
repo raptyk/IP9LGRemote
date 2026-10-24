@@ -3,43 +3,43 @@
 #include "StatusLed.h"
 
 #include <M5Unified.h>
+#include <esp32-hal-rmt.h>
 #include <math.h>
-#include <utility/led/LED_Strip_Class.hpp>
 
 namespace lgremote {
 
 namespace {
 constexpr uint32_t kBreathPeriodMs = 2400;
-constexpr uint8_t kSteadyLevel = 24;  // pointer mode: a gentle glow, not a torch
+constexpr uint8_t kSteadyLevel = 40;  // pointer mode: a gentle glow, not a torch
 // On the ADV the LED supply follows the PWM backlight; a lit LED is re-sent regularly so
 // it recovers when the screen dims or wakes.
 constexpr uint32_t kRefreshMs = 250;
+
+// NeoPixel timing with a 100 ns RMT tick (same as the core's neopixelWrite()).
+constexpr float kRmtTickNs = 100;
+constexpr uint32_t kBitHighTicks = 8;  // "1": 0.8 us high, 0.4 us low
+constexpr uint32_t kBitLowTicks = 4;   // "0": 0.4 us high, 0.8 us low
+constexpr size_t kFrameBits = 32;      // G, R, B and an unused W byte
 }  // namespace
 
-StatusLed::StatusLed() = default;
-StatusLed::~StatusLed() = default;
-
 void StatusLed::begin() {
-    // M5.Led only sends 3 bytes per LED (WS2812). The Cardputer ADV carries an SK6812 RGBW
-    // LED that needs 4 bytes (G, R, B, W) and ignores shorter frames, so the frame is sent
-    // directly over M5Unified's RMT bus. A 3-byte WS2812 (original Cardputer) takes the first
-    // 24 bits - the same colour - and passes the extra byte on, so this works on both.
-    // No power pin: on the ADV the LED supply follows GPIO38, which is the display backlight.
+    // The LED is driven with the Arduino core RMT driver, like the core's neopixelWrite():
+    // M5.Led cannot be used because M5Unified's RMT LED bus is empty on ESP-IDF 4.x
+    // (Arduino core 2.x), so it never sends anything there.
+    // Frames carry 32 bits (GRB + an unused white byte): a 3-byte NeoPixel takes the first
+    // 24 bits and passes the rest on, an RGBW variant gets the full frame it expects.
     const int pin = M5.getPin(m5::pin_name_t::rgb_led);
     if (pin < 0) {
         return;
     }
-    bus_ = std::make_unique<m5::LedBus_RMT>();
-    auto config = bus_->getConfig();
-    config.pin_data = static_cast<int8_t>(pin);
-    config.pin_power = -1;
-    bus_->setConfig(config);
-    available_ = bus_->init();
-    if (available_) {
-        show(0, 0);
-    } else {
-        bus_.reset();
+    rmt_ = rmtInit(pin, RMT_TX_MODE, RMT_MEM_64);
+    if (rmt_ == nullptr) {
+        log_e("Status LED: RMT init failed on GPIO%d", pin);
+        return;
     }
+    rmtSetTick(rmt_, kRmtTickNs);
+    available_ = true;
+    show(0, 0);
 }
 
 void StatusLed::setEnabled(bool enabled) {
@@ -118,8 +118,17 @@ void StatusLed::show(uint32_t colour, uint8_t level) {
     const uint8_t red = ((colour >> 16) & 0xFF) * level / 255;
     const uint8_t green = ((colour >> 8) & 0xFF) * level / 255;
     const uint8_t blue = (colour & 0xFF) * level / 255;
-    const uint8_t frame[4] = {green, red, blue, 0};  // GRB(W) order, white channel unused
-    bus_->write(frame, sizeof(frame));
+    const uint8_t bytes[4] = {green, red, blue, 0};  // GRB(W) order, white channel unused
+
+    rmt_data_t frame[kFrameBits];
+    for (size_t i = 0; i < kFrameBits; ++i) {
+        const bool one = (bytes[i / 8] >> (7 - i % 8)) & 0x01;
+        frame[i].level0 = 1;
+        frame[i].duration0 = one ? kBitHighTicks : kBitLowTicks;
+        frame[i].level1 = 0;
+        frame[i].duration1 = one ? kBitLowTicks : kBitHighTicks;
+    }
+    rmtWriteBlocking(rmt_, frame, kFrameBits);
 }
 
 }  // namespace lgremote
