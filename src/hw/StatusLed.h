@@ -4,6 +4,12 @@
 
 #include <stdint.h>
 
+#include <memory>
+
+namespace m5 {
+class LedBus_RMT;
+}
+
 namespace lgremote {
 
 // Background pattern of the RGB status LED.
@@ -13,11 +19,15 @@ enum class LedPattern : uint8_t {
     Steady      // a mode is active (pointer)
 };
 
-// WS2812 RGB LED (GPIO21 on Cardputer and Cardputer ADV) driven through M5Unified.
+// RGB status LED on GPIO21 (WS2812 on the Cardputer, SK6812 RGBW on the Cardputer ADV),
+// driven through M5Unified's RMT bus.
 // A background pattern plus short one-shot signals (flashes, blink bursts) on top of it.
 // Colours are 0xRRGGBB.
 class StatusLed {
 public:
+    StatusLed();
+    ~StatusLed();
+
     void begin();
     void setEnabled(bool enabled);
     bool enabled() const { return enabled_; }
@@ -36,6 +46,7 @@ private:
 
     void show(uint32_t colour, uint8_t level);
 
+    std::unique_ptr<m5::LedBus_RMT> bus_;
     bool available_ = false;
     bool enabled_ = true;
     LedPattern pattern_ = LedPattern::Off;
@@ -49,6 +60,7 @@ private:
 
     uint32_t shownColour_ = 0xFFFFFFFF;  // forces the first update
     uint8_t shownLevel_ = 0xFF;
+    uint32_t lastWriteAt_ = 0;
 };
 
 }  // namespace lgremote

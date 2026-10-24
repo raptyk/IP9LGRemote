@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1 – 2026-10-25
+
+- Fixed: the status light stayed dark on the Cardputer ADV. Its LED is an SK6812 RGBW that
+  needs 4-byte frames (M5Unified sends 3); frames are now sent as G-R-B-W over the RMT bus,
+  which also works for the 3-byte WS2812 of the original Cardputer. A lit LED is refreshed
+  every 250 ms because on the ADV its supply follows the display backlight.
+
 ## 1.3.0 – 2026-10-25
 
 - Setup finishes by itself: after the last step (e.g. pairing) the remote opens with a

@@ -4,19 +4,41 @@
 
 #include <M5Unified.h>
 #include <math.h>
+#include <utility/led/LED_Strip_Class.hpp>
 
 namespace lgremote {
 
 namespace {
 constexpr uint32_t kBreathPeriodMs = 2400;
 constexpr uint8_t kSteadyLevel = 24;  // pointer mode: a gentle glow, not a torch
+// On the ADV the LED supply follows the PWM backlight; a lit LED is re-sent regularly so
+// it recovers when the screen dims or wakes.
+constexpr uint32_t kRefreshMs = 250;
 }  // namespace
 
+StatusLed::StatusLed() = default;
+StatusLed::~StatusLed() = default;
+
 void StatusLed::begin() {
-    available_ = M5.Led.isEnabled() && M5.Led.begin();
+    // M5.Led only sends 3 bytes per LED (WS2812). The Cardputer ADV carries an SK6812 RGBW
+    // LED that needs 4 bytes (G, R, B, W) and ignores shorter frames, so the frame is sent
+    // directly over M5Unified's RMT bus. A 3-byte WS2812 (original Cardputer) takes the first
+    // 24 bits - the same colour - and passes the extra byte on, so this works on both.
+    // No power pin: on the ADV the LED supply follows GPIO38, which is the display backlight.
+    const int pin = M5.getPin(m5::pin_name_t::rgb_led);
+    if (pin < 0) {
+        return;
+    }
+    bus_ = std::make_unique<m5::LedBus_RMT>();
+    auto config = bus_->getConfig();
+    config.pin_data = static_cast<int8_t>(pin);
+    config.pin_power = -1;
+    bus_->setConfig(config);
+    available_ = bus_->init();
     if (available_) {
-        M5.Led.setBrightness(255);  // levels are applied per colour in show()
         show(0, 0);
+    } else {
+        bus_.reset();
     }
 }
 
@@ -82,16 +104,22 @@ void StatusLed::loop() {
 }
 
 void StatusLed::show(uint32_t colour, uint8_t level) {
-    if (!available_ || (colour == shownColour_ && level == shownLevel_)) {
+    if (!available_) {
+        return;
+    }
+    const uint32_t now = millis();
+    const bool unchanged = colour == shownColour_ && level == shownLevel_;
+    if (unchanged && (level == 0 || now - lastWriteAt_ < kRefreshMs)) {
         return;
     }
     shownColour_ = colour;
     shownLevel_ = level;
+    lastWriteAt_ = now;
     const uint8_t red = ((colour >> 16) & 0xFF) * level / 255;
     const uint8_t green = ((colour >> 8) & 0xFF) * level / 255;
     const uint8_t blue = (colour & 0xFF) * level / 255;
-    M5.Led.setAllColor(red, green, blue);
-    M5.Led.display();
+    const uint8_t frame[4] = {green, red, blue, 0};  // GRB(W) order, white channel unused
+    bus_->write(frame, sizeof(frame));
 }
 
 }  // namespace lgremote
