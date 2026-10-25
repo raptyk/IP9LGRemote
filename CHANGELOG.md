@@ -2,6 +2,9 @@
 
 ## 1.4.0 – 2026-10-25
 
+- Release images are named `LGTVRemoteCardputer-<version>.bin` (shorter, clearer partition
+  name in M5Launcher).
+
 - Remote screen redesign so the active mode is unmistakable and it never looks like a menu:
   background tinted in the mode colour, a solid band "WI-FI REMOTE" / "IR REMOTE" /
   "BLUETOOTH REMOTE" / "USB REMOTE" with the mode icon, and drawn key caps for the keys that

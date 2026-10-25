@@ -14,14 +14,14 @@ Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT
 
 ## Install with M5Launcher
 
-1. Download (or build) `release/LGRemoteCardputer-<version>.bin`.
+1. Download (or build) `release/LGTVRemoteCardputer-<version>.bin`.
 2. Copy it to the SD card (FAT32).
 3. In M5Launcher: **SD → select the file → Install**.
 
 The `-full.bin` image (bootloader + partitions + app) can be flashed without Launcher:
 
 ```bash
-esptool.py --chip esp32s3 write_flash 0x0 release/LGRemoteCardputer-1.3.4-full.bin
+esptool.py --chip esp32s3 write_flash 0x0 release/LGTVRemoteCardputer-1.4.0-full.bin
 ```
 
 ## First steps

@@ -2,16 +2,16 @@
 # Copyright (c) 2026 Patryk Strzelecki <patryk@strzelecki.info>
 #
 # PlatformIO post-build step. Produces in ./release:
-#   LGRemoteCardputer-<version>.bin       app image for M5Launcher (SD card -> Install)
-#   LGRemoteCardputer-<version>-full.bin  merged image (bootloader + partitions + app),
+#   LGTVRemoteCardputer-<version>.bin       app image for M5Launcher (SD card -> Install)
+#   LGTVRemoteCardputer-<version>-full.bin  merged image (bootloader + partitions + app),
 #                                         flash at offset 0x0 with esptool or M5Burner
 import os
 import re
 
 Import("env")  # noqa: F821  (provided by PlatformIO/SCons)
 
-# Starts with "LGRemote": M5Launcher names the app partition after the first letters.
-PROJECT_NAME = "LGRemoteCardputer"
+# Starts with "LGTV": M5Launcher names the app partition after the first letters.
+PROJECT_NAME = "LGTVRemoteCardputer"
 
 
 def _app_version():
