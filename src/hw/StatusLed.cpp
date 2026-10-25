@@ -40,6 +40,14 @@ void StatusLed::startSteps() {
     stepsStartedAt_ = millis();
 }
 
+bool StatusLed::stepsPlaying() const {
+    uint32_t total = 0;
+    for (size_t i = 0; i < stepCount_; ++i) {
+        total += steps_[i].durationMs;
+    }
+    return millis() - stepsStartedAt_ < total;
+}
+
 void StatusLed::addStep(uint32_t colour, uint16_t durationMs) {
     if (stepCount_ < kMaxSteps && durationMs > 0) {
         steps_[stepCount_++] = {colour, durationMs};
@@ -51,8 +59,10 @@ void StatusLed::flash(uint32_t colour, uint16_t durationMs) {
     addStep(colour, durationMs);
 }
 
-void StatusLed::blink(uint32_t colour, uint8_t count, uint16_t onMs, uint16_t offMs) {
-    startSteps();
+void StatusLed::blink(uint32_t colour, uint8_t count, uint16_t onMs, uint16_t offMs, bool afterCurrent) {
+    if (!afterCurrent || !stepsPlaying()) {
+        startSteps();
+    }
     for (uint8_t i = 0; i < count; ++i) {
         addStep(colour, onMs);
         addStep(0, offMs);

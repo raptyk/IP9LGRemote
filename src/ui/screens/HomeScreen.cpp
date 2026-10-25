@@ -60,13 +60,24 @@ void HomeScreen::onEnter() {
             break;
         }
     }
+    warnIfSetupNeeded();
 }
 
 void HomeScreen::move(int delta) {
     selected_ = (selected_ + delta + kCardCount) % kCardCount;
     slideDirection_ = delta;
     slideStartedAt_ = millis();
+    warnIfSetupNeeded();
     app_.invalidate();
+}
+
+void HomeScreen::warnIfSetupNeeded() {
+    const Card& card = kCards[selected_];
+    const uint32_t bit = 1u << selected_;
+    if (card.kind == CardKind::Mode && !app_.settings().isSetUp(card.mode) && (warnedCards_ & bit) == 0) {
+        warnedCards_ |= bit;
+        app_.signalWarning();
+    }
 }
 
 void HomeScreen::onKey(const KeyEvent& event) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.6 – 2026-10-25
+
+- Warning light: one short red double blink (never repeating) when the user has to do
+  something – a locked menu row is selected (together with its pop-up), a warning pop-up is
+  shown (no Wi-Fi, TV not set up, invalid input, pointer/typing unavailable), a setup
+  checklist opens, a home card still needs setup (first time per session), pairing fails,
+  or the Wi-Fi search finds nothing.
+- Release images are written on every build again (fixed packaging hook).
+
 ## 1.3.5 – 2026-10-25
 
 - Status light code simplified: flashes, blink bursts and colour sequences share one queue of

@@ -89,7 +89,7 @@ void ListScreen::activate(int index) {
     ListItem& item = items_[index];
     if (!isEnabled(index)) {
         if (item.lockedReason) {
-            app_.toast(item.lockedReason());
+            app_.warn(item.lockedReason());
         }
         return;
     }

@@ -55,6 +55,10 @@ void SetupScreen::finish() {
 void SetupScreen::onEnter() {
     // Called again when a step's screen closes: jump to the next open step.
     selectFirstOpenStep();
+    if (!warned_ && !completeAtStart_) {
+        warned_ = true;
+        app_.signalWarning();  // something to do before the remote works
+    }
 }
 
 void SetupScreen::addStep(const char* label, const char* description, std::function<bool()> isDone,
@@ -131,7 +135,7 @@ void SetupScreen::build() {
                                 irTested_ = true;
                                 app_.toast(str::kIrTestOk);
                             },
-                            [this]() { app_.toast(str::kIrTestTips); }));
+                            [this]() { app_.warn(str::kIrTestTips); }));
                     },
                     [this]() { return String(irTested_ ? str::kStepOk : ""); }, false);
             break;
@@ -178,7 +182,7 @@ void SetupScreen::build() {
             addStep(str::kStepFindTv, str::kStepFindTvText, [&app]() { return !app.settings().tvHost.isEmpty(); },
                     [this]() {
                         if (!app_.wifi().isConnected()) {
-                            app_.toast(str::kTvNeedWifi);
+                            app_.warn(str::kTvNeedWifi);
                             return;
                         }
                         app_.push(std::make_unique<TvSearchScreen>(app_, this));
@@ -191,7 +195,7 @@ void SetupScreen::build() {
             addStep(str::kStepPair, str::kStepPairText, [&app]() { return app.settings().isSetUp(LinkMode::Auto); },
                     [this]() {
                         if (app_.settings().tvHost.isEmpty()) {
-                            app_.toast(str::kSetUpTvFirst);
+                            app_.warn(str::kSetUpTvFirst);
                             return;
                         }
                         app_.applyTvSettings();

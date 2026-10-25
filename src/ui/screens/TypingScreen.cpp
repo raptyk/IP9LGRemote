@@ -12,7 +12,7 @@ namespace lgremote {
 void TypingScreen::onKey(const KeyEvent& event) {
     Transport* link = app_.router().textTransport();
     if (link == nullptr) {
-        app_.toast(app_.router().pointerUnavailableReason());
+        app_.warn(app_.router().pointerUnavailableReason());
         app_.pop();
         return;
     }

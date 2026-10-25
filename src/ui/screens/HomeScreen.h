@@ -23,10 +23,13 @@ public:
 private:
     void open(bool forceSetup);
     void move(int delta);
+    // One red blink the first time (per session) a card that still needs setup is shown.
+    void warnIfSetupNeeded();
 
     int selected_ = 0;
     int slideDirection_ = 0;  // -1 / +1 during the short slide animation
     uint32_t slideStartedAt_ = 0;
+    uint32_t warnedCards_ = 0;  // bit per card
 };
 
 // Opens the remote for `mode`, running its setup checklist first if needed.

@@ -60,7 +60,7 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
     items.push_back({str::kTvSearch, nullptr,
                      [&app, self]() {
                          if (!app.wifi().isConnected()) {
-                             app.toast(str::kTvNeedWifi);
+                             app.warn(str::kTvNeedWifi);
                              return;
                          }
                          app.push(std::make_unique<TvSearchScreen>(app, self));
@@ -80,7 +80,7 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
     items.push_back({str::kTvPairAgain, nullptr,
                      [&app, self]() {
                          if (app.settings().tvHost.isEmpty()) {
-                             app.toast(str::kSetUpTvFirst);
+                             app.warn(str::kSetUpTvFirst);
                              return;
                          }
                          app.settings().tvClientKey = "";
@@ -99,7 +99,7 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
                                  keycode.trim();
                                  keycode.toUpperCase();
                                  if (!keycode.isEmpty() && !IpControlClient::isValidKeycode(keycode)) {
-                                     app.toast(str::kTvKeycodeInvalid);
+                                     app.warn(str::kTvKeycodeInvalid);
                                      return;
                                  }
                                  app.settings().tvKeycode = keycode;
@@ -118,7 +118,7 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
                              [&app](const String& text) {
                                  uint8_t bytes[6];
                                  if (!text.isEmpty() && !parseMacAddress(text, bytes)) {
-                                     app.toast(str::kTvMacInvalid);
+                                     app.warn(str::kTvMacInvalid);
                                      return;
                                  }
                                  app.settings().tvMac = text;
@@ -169,7 +169,7 @@ std::unique_ptr<Screen> makeBleKeyTestMenu(App& app) {
         items.push_back({probe.label, nullptr,
                          [&app, probe]() {
                              if (!app.ble().isConnected()) {
-                                 app.toast(str::kBleNotConnected);
+                                 app.warn(str::kBleNotConnected);
                                  return;
                              }
                              if (probe.keyboard != 0) {
@@ -286,7 +286,7 @@ void promptTvAddress(App& app, Screen* returnTo) {
             host.trim();
             IPAddress address;
             if (!address.fromString(host)) {
-                app.toast(str::kTvIpInvalid);
+                app.warn(str::kTvIpInvalid);
                 return;
             }
             selectTv(app, host, String(), returnTo);
@@ -341,7 +341,7 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
          nullptr,
          [&app](int delta) {
              if (app.device().brightnessLocked()) {
-                 app.toast(str::kBrightnessLockedToast);
+                 app.warn(str::kBrightnessLockedToast);
                  return;
              }
              const int index = constrain(static_cast<int>(brightnessIndex(app.settings().brightness)) + delta, 0,
@@ -395,7 +395,7 @@ std::unique_ptr<Screen> makeAppsMenu(App& app) {
                              } else if (shortcut.irCommand != 0) {
                                  app.ir().sendRaw(shortcut.irCommand);
                              } else {
-                                 app.toast(str::kTvNotConnected);
+                                 app.warn(str::kTvNotConnected);
                                  return;
                              }
                              app.pop();

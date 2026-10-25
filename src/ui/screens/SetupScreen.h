@@ -41,6 +41,7 @@ private:
     bool tvPrepared_ = false;      // user confirmed the TV-side settings (cannot be detected)
     bool irTested_ = false;        // optional IR test answered with "yes"
     bool completeAtStart_ = false;  // opened only to repeat a finished setup: no auto-start
+    bool warned_ = false;           // the "something to do" blink is shown once
 };
 
 }  // namespace lgremote

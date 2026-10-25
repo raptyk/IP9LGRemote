@@ -42,6 +42,10 @@ public:
 
     // Short message shown above the footer for ~1.8 s.
     void toast(const String& message);
+    // A toast for something the user has to fix or do first, plus one red double blink.
+    void warn(const String& message);
+    // The red double blink alone (setup needed, pairing failed, nothing found).
+    void signalWarning();
 
     // Feedback for a sent key (shown on the remote screen).
     void keyClick();

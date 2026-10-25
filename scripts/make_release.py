@@ -48,6 +48,13 @@ def _make_release(source, target, env):
     print(f"Release images:\n  {app_out}\n  {full_out}")
 
 
-# "checkprogsize" runs on every build, so the images are (re)written even when the
-# firmware itself did not change (e.g. after deleting the release folder).
-env.AddPostAction("checkprogsize", _make_release)  # noqa: F821
+def _make_release_if_built(source, target, env):
+    # "checkprogsize" runs on every build but, on a fresh build, before firmware.bin exists.
+    if os.path.isfile(os.path.join(env.subst("$BUILD_DIR"), "firmware.bin")):
+        _make_release(source, target, env)
+
+
+# Rebuilt firmware: after firmware.bin is written.
+env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", _make_release)  # noqa: F821
+# Unchanged firmware (e.g. the release folder was deleted): on the always-run size check.
+env.AddPostAction("checkprogsize", _make_release_if_built)  # noqa: F821

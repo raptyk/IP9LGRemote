@@ -148,6 +148,16 @@ void App::toast(const String& message) {
     dirty_ = true;
 }
 
+void App::warn(const String& message) {
+    toast(message);
+    signalWarning();
+}
+
+void App::signalWarning() {
+    // Once per event and short on purpose: a hint, not an alarm.
+    statusLed_.blink(ui::kLedError, 2, 70, 90, true);
+}
+
 void App::keyClick() {
     if (settings_.keyClick) {
         M5Cardputer.Speaker.tone(3200, 6);

@@ -69,6 +69,7 @@ private:
     Screen* returnTo_;
     uint32_t readySince_ = 0;
     bool pinAsked_ = false;
+    bool failureSignalled_ = false;  // one warning blink per failure, not a blinking loop
 };
 
 // Step-by-step instructions for pairing the Bluetooth HID mode with the TV.

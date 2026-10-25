@@ -27,7 +27,9 @@ public:
     // One short flash, e.g. "command sent".
     void flash(uint32_t colour, uint16_t durationMs = 60);
     // `count` blinks, e.g. two green = connected, three red = connection lost.
-    void blink(uint32_t colour, uint8_t count, uint16_t onMs = 90, uint16_t offMs = 110);
+    // With `afterCurrent` the blinks wait until the steps already playing have finished.
+    void blink(uint32_t colour, uint8_t count, uint16_t onMs = 90, uint16_t offMs = 110,
+               bool afterCurrent = false);
     // Colours one after another (start-up greeting, LED test).
     void playSequence(const uint32_t* colours, size_t count, uint16_t stepMs);
 
@@ -43,6 +45,7 @@ private:
     static constexpr uint8_t kMaxLevel = 110;  // of 255: visible in daylight, not glaring at night
 
     void startSteps();
+    bool stepsPlaying() const;
     void addStep(uint32_t colour, uint16_t durationMs);
     void show(uint32_t colour, uint8_t level);
 

@@ -124,14 +124,14 @@ bool RemoteScreen::handleAction(const KeyEvent& event) {
         case keycode::kButtonG0:
         case 'a':
             if (infraredOnly_) {
-                app_.toast(str::kNeedsLanOrBle);
+                app_.warn(str::kNeedsLanOrBle);
             } else {
                 togglePointer();
             }
             return true;
         case 't':
             if (infraredOnly_ || app_.router().textTransport() == nullptr) {
-                app_.toast(app_.router().pointerUnavailableReason());
+                app_.warn(app_.router().pointerUnavailableReason());
             } else {
                 stopPointer();
                 app_.push(std::make_unique<TypingScreen>(app_));
@@ -211,7 +211,7 @@ void RemoteScreen::togglePointer() {
     }
     Transport* link = app_.router().pointerTransport();
     if (link == nullptr) {
-        app_.toast(app_.router().pointerUnavailableReason());
+        app_.warn(app_.router().pointerUnavailableReason());
         return;
     }
     pointerActive_ = true;
@@ -247,7 +247,7 @@ void RemoteScreen::tick() {
     }
     if (pointerLink_ == nullptr || !pointerLink_->isReady()) {
         stopPointer();
-        app_.toast(app_.router().pointerUnavailableReason());
+        app_.warn(app_.router().pointerUnavailableReason());
         return;
     }
 

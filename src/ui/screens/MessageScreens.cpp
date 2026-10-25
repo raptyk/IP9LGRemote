@@ -147,6 +147,12 @@ void TvPairingScreen::onKey(const KeyEvent& event) {
 void TvPairingScreen::tick() {
     WebOsClient& webos = app_.webos();
     const WebOsStatus status = webos.status();
+    const bool failed = status == WebOsStatus::Rejected || status == WebOsStatus::Unreachable ||
+                        status == WebOsStatus::NoNetwork;
+    if (failed && !failureSignalled_) {
+        app_.signalWarning();
+    }
+    failureSignalled_ = failed;
     if (status == WebOsStatus::Ready) {
         if (readySince_ == 0) {
             readySince_ = millis();
@@ -326,6 +332,9 @@ void WifiScanScreen::rebuild() {
     }
     items.push_back({str::kWifiRescan, nullptr, [this]() { restartSearch(); }, nullptr,
                      networks_.empty() ? str::kWifiRescanText : str::kWifiRescanListText});
+    if (networks_.empty()) {
+        app_.signalWarning();
+    }
     if (!app_.settings().wifiSsid.isEmpty()) {
         items.push_back({str::kWifiForget, nullptr,
                          [this]() {
@@ -392,7 +401,7 @@ void TvSearchScreen::tick() {
     } else if (items_.empty()) {
         // Search could not start (no Wi-Fi): offer manual entry right away.
         if (!app_.wifi().isConnected()) {
-            app_.toast(str::kTvNeedWifi);
+            app_.warn(str::kTvNeedWifi);
         }
         rebuild();
     }
