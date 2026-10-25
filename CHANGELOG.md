@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.3 – 2026-10-25
+
+- Fixed (Cardputer ADV): the status light could not work because its supply is switched by
+  GPIO38 together with the display backlight, which M5GFX drives as 256 Hz PWM – the LED lost
+  power every 4 ms. The backlight PWM now runs at 20 kHz, the backlight never drops below
+  160/255 while the LED is lit (same floor as Bruce firmware) and lit frames are re-sent every
+  50 ms. Frames are plain 24-bit GRB via the core's `neopixelWrite()`.
+- Start-up greeting: the LED shows the four mode colours for half a second.
+- Settings > Test status light (red, green, blue, white at full backlight).
+
 ## 1.3.2 – 2026-10-25
 
 - Fixed: the status light still stayed dark. M5Unified's LED driver has no RMT

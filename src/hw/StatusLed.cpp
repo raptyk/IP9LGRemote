@@ -3,7 +3,6 @@
 #include "StatusLed.h"
 
 #include <M5Unified.h>
-#include <esp32-hal-rmt.h>
 #include <math.h>
 
 namespace lgremote {
@@ -11,41 +10,25 @@ namespace lgremote {
 namespace {
 constexpr uint32_t kBreathPeriodMs = 2400;
 constexpr uint8_t kSteadyLevel = 40;  // pointer mode: a gentle glow, not a torch
-// On the ADV the LED supply follows the PWM backlight; a lit LED is re-sent regularly so
-// it recovers when the screen dims or wakes.
-constexpr uint32_t kRefreshMs = 250;
-
-// NeoPixel timing with a 100 ns RMT tick (same as the core's neopixelWrite()).
-constexpr float kRmtTickNs = 100;
-constexpr uint32_t kBitHighTicks = 8;  // "1": 0.8 us high, 0.4 us low
-constexpr uint32_t kBitLowTicks = 4;   // "0": 0.4 us high, 0.8 us low
-constexpr size_t kFrameBits = 32;      // G, R, B and an unused W byte
+// A lit LED is re-sent regularly so it recovers by itself if its supply dipped
+// (on the ADV the supply is switched together with the display backlight).
+constexpr uint32_t kRefreshMs = 50;
 }  // namespace
 
 void StatusLed::begin() {
-    // The LED is driven with the Arduino core RMT driver, like the core's neopixelWrite():
-    // M5.Led cannot be used because M5Unified's RMT LED bus is empty on ESP-IDF 4.x
-    // (Arduino core 2.x), so it never sends anything there.
-    // Frames carry 32 bits (GRB + an unused white byte): a 3-byte NeoPixel takes the first
-    // 24 bits and passes the rest on, an RGBW variant gets the full frame it expects.
-    const int pin = M5.getPin(m5::pin_name_t::rgb_led);
-    if (pin < 0) {
-        return;
+    // Driven with the Arduino core's neopixelWrite() (RMT, 24-bit GRB, NeoPixel timing).
+    // M5.Led cannot be used: M5Unified's RMT LED bus is empty on ESP-IDF 4.x (Arduino core 2.x).
+    pin_ = M5.getPin(m5::pin_name_t::rgb_led);
+    if (pin_ >= 0) {
+        show(0, 0);
     }
-    rmt_ = rmtInit(pin, RMT_TX_MODE, RMT_MEM_64);
-    if (rmt_ == nullptr) {
-        log_e("Status LED: RMT init failed on GPIO%d", pin);
-        return;
-    }
-    rmtSetTick(rmt_, kRmtTickNs);
-    available_ = true;
-    show(0, 0);
 }
 
 void StatusLed::setEnabled(bool enabled) {
     enabled_ = enabled;
     if (!enabled_) {
         burstCount_ = 0;
+        sequenceLength_ = 0;
         show(0, 0);
     }
 }
@@ -67,13 +50,34 @@ void StatusLed::blink(uint32_t colour, uint8_t count, uint16_t onMs, uint16_t of
     burstStartedAt_ = millis();
 }
 
+void StatusLed::playSequence(const uint32_t* colours, size_t count, uint16_t stepMs) {
+    sequenceLength_ = count < kMaxSequence ? count : kMaxSequence;
+    for (size_t i = 0; i < sequenceLength_; ++i) {
+        sequence_[i] = colours[i];
+    }
+    sequenceStepMs_ = stepMs;
+    sequenceStartedAt_ = millis();
+}
+
+bool StatusLed::wantsPower() const {
+    return pin_ >= 0 && enabled_ && (sequenceLength_ > 0 || burstCount_ > 0 || pattern_ != LedPattern::Off);
+}
+
 void StatusLed::loop() {
-    if (!available_ || !enabled_) {
+    if (pin_ < 0 || !enabled_) {
         return;
     }
     const uint32_t now = millis();
 
-    // One-shot signals win over the background pattern.
+    // Sequences and one-shot signals win over the background pattern.
+    if (sequenceLength_ > 0) {
+        const size_t step = (now - sequenceStartedAt_) / sequenceStepMs_;
+        if (step < sequenceLength_) {
+            show(sequence_[step], kMaxLevel);
+            return;
+        }
+        sequenceLength_ = 0;
+    }
     if (burstCount_ > 0) {
         const uint32_t cycle = burstOnMs_ + burstOffMs_;
         const uint32_t elapsed = now - burstStartedAt_;
@@ -96,7 +100,7 @@ void StatusLed::loop() {
             const float phase = static_cast<float>(now % kBreathPeriodMs) / kBreathPeriodMs;
             const float wave = 0.5f - 0.5f * cosf(phase * 2.0f * PI);
             // Quantised to steps of 4 so the LED is not rewritten on every loop iteration.
-            const uint8_t level = static_cast<uint8_t>(wave * (kMaxLevel / 2)) & 0xFC;
+            const uint8_t level = static_cast<uint8_t>(8 + wave * (kMaxLevel / 2)) & 0xFC;
             show(patternColour_, level);
             break;
         }
@@ -104,7 +108,7 @@ void StatusLed::loop() {
 }
 
 void StatusLed::show(uint32_t colour, uint8_t level) {
-    if (!available_) {
+    if (pin_ < 0) {
         return;
     }
     const uint32_t now = millis();
@@ -118,17 +122,7 @@ void StatusLed::show(uint32_t colour, uint8_t level) {
     const uint8_t red = ((colour >> 16) & 0xFF) * level / 255;
     const uint8_t green = ((colour >> 8) & 0xFF) * level / 255;
     const uint8_t blue = (colour & 0xFF) * level / 255;
-    const uint8_t bytes[4] = {green, red, blue, 0};  // GRB(W) order, white channel unused
-
-    rmt_data_t frame[kFrameBits];
-    for (size_t i = 0; i < kFrameBits; ++i) {
-        const bool one = (bytes[i / 8] >> (7 - i % 8)) & 0x01;
-        frame[i].level0 = 1;
-        frame[i].duration0 = one ? kBitHighTicks : kBitLowTicks;
-        frame[i].level1 = 0;
-        frame[i].duration1 = one ? kBitLowTicks : kBitHighTicks;
-    }
-    rmtWriteBlocking(rmt_, frame, kFrameBits);
+    neopixelWrite(static_cast<uint8_t>(pin_), red, green, blue);
 }
 
 }  // namespace lgremote

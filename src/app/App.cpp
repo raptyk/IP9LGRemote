@@ -21,6 +21,11 @@ constexpr uint32_t kStatusRefreshMs = 500;
 constexpr uint8_t kDimBrightness = 24;
 constexpr uint32_t kMinFrameIntervalMs = 33;  // ~30 fps is plenty and leaves CPU time for input
 constexpr int kBatteryWidth = 52;             // battery icon + "100%" on the right of the status bar
+// Cardputer ADV: minimum backlight duty while the status LED is lit (its supply hangs on the
+// backlight line). Bruce firmware uses the same floor.
+constexpr uint8_t kLedPowerFloor = 160;
+constexpr uint16_t kLedGreetingStepMs = 150;
+constexpr uint16_t kLedTestStepMs = 400;
 
 }  // namespace
 
@@ -57,6 +62,12 @@ void App::begin() {
     applyWifiSettings();
     applyTvSettings();
     applyDisplaySettings();
+    if (settings_.statusLed) {
+        // Short greeting in the four mode colours: shows at a glance that the LED works.
+        const uint32_t greeting[] = {ui::modeLedColour(LinkMode::Auto), ui::modeLedColour(LinkMode::Ir),
+                                     ui::modeLedColour(LinkMode::Ble), ui::modeLedColour(LinkMode::Usb)};
+        statusLed_.playSequence(greeting, 4, kLedGreetingStepMs);
+    }
     // Bluetooth / USB start only when the user picks them on the home screen.
     const bool networkMode = settings_.linkMode == LinkMode::Auto || settings_.linkMode == LinkMode::Lan;
     router_.setMode(networkMode ? settings_.linkMode : LinkMode::Ir);
@@ -78,6 +89,13 @@ void App::loop() {
     retired_.clear();
     updatePower();
     updateStatusLed();
+    // Keep the ADV's LED supply (= backlight line) up while the LED shows something.
+    const uint32_t loopNow = millis();
+    if (!screenOff_ && loopNow < ledTestUntil_) {
+        device_.setLedPowerFloor(255);
+    } else {
+        device_.setLedPowerFloor(!screenOff_ && statusLed_.wantsPower() ? kLedPowerFloor : 0);
+    }
     statusLed_.loop();
 
     const uint32_t now = millis();
@@ -173,6 +191,12 @@ void App::selectMode(LinkMode mode) {
     router_.setMode(mode);
     saveSettings();
     dirty_ = true;
+}
+
+void App::testStatusLed() {
+    const uint32_t colours[] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF};
+    statusLed_.playSequence(colours, 4, kLedTestStepMs);
+    ledTestUntil_ = millis() + 4 * kLedTestStepMs;
 }
 
 void App::signalCommand(bool delivered) {

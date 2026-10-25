@@ -48,6 +48,8 @@ public:
     // Status LED feedback: a flash in the mode colour when a command left, red when it could not.
     void signalCommand(bool delivered);
     void setPointerActive(bool active) { pointerActive_ = active; }
+    // Plays red, green, blue, white on the status LED (Settings > Test status light).
+    void testStatusLed();
 
     Settings& settings() { return settings_; }
     void saveSettings() { settings_.save(); }
@@ -112,6 +114,7 @@ private:
     LinkMode ledMode_ = LinkMode::Count;
     bool ledLinkReady_ = false;
     uint32_t lastBatteryBlinkAt_ = 0;
+    uint32_t ledTestUntil_ = 0;
 
     uint32_t lastInputAt_ = 0;
     bool screenDimmed_ = false;

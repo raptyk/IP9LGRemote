@@ -2,10 +2,8 @@
 // Copyright (c) 2026 Patryk Strzelecki <patryk@strzelecki.info>
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
-
-struct rmt_obj_s;  // Arduino core RMT channel (esp32-hal-rmt.h)
-
 
 namespace lgremote {
 
@@ -16,10 +14,9 @@ enum class LedPattern : uint8_t {
     Steady      // a mode is active (pointer)
 };
 
-// RGB status LED on GPIO21 (WS2812 on the Cardputer, SK6812 RGBW on the Cardputer ADV),
-// driven by the RMT peripheral.
-// A background pattern plus short one-shot signals (flashes, blink bursts) on top of it.
-// Colours are 0xRRGGBB.
+// RGB status LED on GPIO21 (WS2812/SK6812, 24-bit GRB) on Cardputer and Cardputer ADV.
+// A background pattern plus short one-shot signals (flashes, blink bursts, colour sequences)
+// on top of it. Colours are 0xRRGGBB.
 class StatusLed {
 public:
     void begin();
@@ -32,16 +29,21 @@ public:
     void flash(uint32_t colour, uint16_t durationMs = 60);
     // A burst of `count` blinks, e.g. two green = connected, three red = connection lost.
     void blink(uint32_t colour, uint8_t count, uint16_t onMs = 90, uint16_t offMs = 110);
+    // Shows up to kMaxSequence colours one after another (start-up greeting, LED test).
+    void playSequence(const uint32_t* colours, size_t count, uint16_t stepMs);
+
+    // True while something is (or is about to be) shown; the ADV then keeps the LED supply on.
+    bool wantsPower() const;
 
     void loop();
 
 private:
     static constexpr uint8_t kMaxLevel = 110;  // of 255: visible in daylight, not glaring at night
+    static constexpr size_t kMaxSequence = 6;
 
     void show(uint32_t colour, uint8_t level);
 
-    rmt_obj_s* rmt_ = nullptr;
-    bool available_ = false;
+    int pin_ = -1;
     bool enabled_ = true;
     LedPattern pattern_ = LedPattern::Off;
     uint32_t patternColour_ = 0;
@@ -51,6 +53,11 @@ private:
     uint16_t burstOnMs_ = 0;
     uint16_t burstOffMs_ = 0;
     uint32_t burstStartedAt_ = 0;
+
+    uint32_t sequence_[kMaxSequence] = {};
+    size_t sequenceLength_ = 0;
+    uint16_t sequenceStepMs_ = 0;
+    uint32_t sequenceStartedAt_ = 0;
 
     uint32_t shownColour_ = 0xFFFFFFFF;  // forces the first update
     uint8_t shownLevel_ = 0xFF;

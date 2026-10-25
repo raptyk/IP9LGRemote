@@ -358,6 +358,15 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
                          app.applyDisplaySettings();
                      },
                      str::kMenuStatusLedText});
+    items.push_back({str::kMenuTestLed, nullptr,
+                     [&app]() {
+                         if (!app.settings().statusLed) {
+                             app.toast(str::kTestLedOff);
+                             return;
+                         }
+                         app.testStatusLed();
+                     },
+                     nullptr, str::kMenuTestLedText});
     items.push_back({str::kMenuService, nullptr, [&app]() { app.push(makeServiceMenu(app)); }, nullptr,
                      str::kMenuServiceText});
     return std::make_unique<ListScreen>(app, str::kMenuTitle, std::move(items));
