@@ -21,9 +21,6 @@ constexpr uint32_t kStatusRefreshMs = 500;
 constexpr uint8_t kDimBrightness = 24;
 constexpr uint32_t kMinFrameIntervalMs = 33;  // ~30 fps is plenty and leaves CPU time for input
 constexpr int kBatteryWidth = 52;             // battery icon + "100%" on the right of the status bar
-// Cardputer ADV: minimum backlight duty while the status LED is lit (its supply hangs on the
-// backlight line). Bruce firmware uses the same floor.
-constexpr uint8_t kLedPowerFloor = 160;
 constexpr uint16_t kLedGreetingStepMs = 150;
 constexpr uint16_t kLedTestStepMs = 400;
 
@@ -89,13 +86,6 @@ void App::loop() {
     retired_.clear();
     updatePower();
     updateStatusLed();
-    // Keep the ADV's LED supply (= backlight line) up while the LED shows something.
-    const uint32_t loopNow = millis();
-    if (!screenOff_ && loopNow < ledTestUntil_) {
-        device_.setLedPowerFloor(255);
-    } else {
-        device_.setLedPowerFloor(!screenOff_ && statusLed_.wantsPower() ? kLedPowerFloor : 0);
-    }
     statusLed_.loop();
 
     const uint32_t now = millis();
@@ -180,6 +170,9 @@ void App::applyTvSettings() {
 }
 
 void App::applyDisplaySettings() {
+    // ADV: the LED is powered from the backlight rail, so an enabled status light keeps the
+    // backlight at full duty (see Device::setLedPowerHold).
+    device_.setLedPowerHold(settings_.statusLed);
     device_.setBrightness(settings_.brightness);
     airMouse_.setSpeed(settings_.pointerSpeed);
     airMouse_.setInvertY(settings_.pointerInvertY);
@@ -196,7 +189,6 @@ void App::selectMode(LinkMode mode) {
 void App::testStatusLed() {
     const uint32_t colours[] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF};
     statusLed_.playSequence(colours, 4, kLedTestStepMs);
-    ledTestUntil_ = millis() + 4 * kLedTestStepMs;
 }
 
 void App::signalCommand(bool delivered) {

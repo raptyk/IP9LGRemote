@@ -10,8 +10,8 @@ namespace lgremote {
 namespace {
 constexpr uint32_t kBreathPeriodMs = 2400;
 constexpr uint8_t kSteadyLevel = 40;  // pointer mode: a gentle glow, not a torch
-// A lit LED is re-sent regularly so it recovers by itself if its supply dipped
-// (on the ADV the supply is switched together with the display backlight).
+// A lit LED is re-sent regularly so it recovers by itself if its supply was switched off
+// (on the ADV the LED VDD is the backlight rail, off while the screen is off).
 constexpr uint32_t kRefreshMs = 50;
 }  // namespace
 
@@ -57,10 +57,6 @@ void StatusLed::playSequence(const uint32_t* colours, size_t count, uint16_t ste
     }
     sequenceStepMs_ = stepMs;
     sequenceStartedAt_ = millis();
-}
-
-bool StatusLed::wantsPower() const {
-    return pin_ >= 0 && enabled_ && (sequenceLength_ > 0 || burstCount_ > 0 || pattern_ != LedPattern::Off);
 }
 
 void StatusLed::loop() {

@@ -32,9 +32,6 @@ public:
     // Shows up to kMaxSequence colours one after another (start-up greeting, LED test).
     void playSequence(const uint32_t* colours, size_t count, uint16_t stepMs);
 
-    // True while something is (or is about to be) shown; the ADV then keeps the LED supply on.
-    bool wantsPower() const;
-
     void loop();
 
 private:

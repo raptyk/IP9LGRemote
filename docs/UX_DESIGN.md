@@ -188,9 +188,10 @@ red, green, blue and white.
 
 Implementation notes: GPIO21, 24-bit GRB via the core's `neopixelWrite()` (M5.Led is a
 no-op with Arduino core 2.x, M5Unified's RMT LED bus is empty for ESP-IDF 4.x).
-On the Cardputer ADV the LED supply is switched by GPIO38, the display backlight PWM:
-the PWM is raised from 256 Hz to 20 kHz, the backlight is held at ≥ 160/255 while the
-LED is lit and lit frames are refreshed every 50 ms. With the screen off the LED is dark.
+On the Cardputer ADV the WS2812's VDD is the backlight rail BL_3V3 (schematic: U3, C17 10 µF),
+switched by GPIO38, which M5GFX drives as 256 Hz PWM to dim the screen. With the status
+light enabled the backlight therefore stays at 255 (100 % duty = GPIO38 high, as the M5Stack
+docs require); Settings > Brightness shows "Max (LED)". With the screen off the LED is dark.
 
 ## Text entry (t)
 

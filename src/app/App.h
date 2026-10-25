@@ -114,7 +114,6 @@ private:
     LinkMode ledMode_ = LinkMode::Count;
     bool ledLinkReady_ = false;
     uint32_t lastBatteryBlinkAt_ = 0;
-    uint32_t ledTestUntil_ = 0;
 
     uint32_t lastInputAt_ = 0;
     bool screenDimmed_ = false;

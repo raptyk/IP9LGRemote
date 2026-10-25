@@ -27,9 +27,13 @@ public:
     void setBrightness(uint8_t level);
     uint8_t brightness() const { return brightness_; }
 
-    // Cardputer ADV: the RGB LED is powered from the backlight line (GPIO38), so while the
-    // status light is lit the backlight must not be dimmed below this level (0 = no limit).
-    void setLedPowerFloor(uint8_t floor);
+    // Cardputer ADV: the RGB LED's VDD is the backlight rail BL_3V3, switched by GPIO38,
+    // which M5GFX drives as PWM to dim the screen. While the status light is enabled the
+    // backlight therefore runs at 255 (100 % duty = GPIO38 constantly high) unless the
+    // screen is off. No effect on the original Cardputer.
+    void setLedPowerHold(bool hold);
+    // True when brightness settings cannot take effect (ADV with the status light on).
+    bool brightnessLocked() const { return ledPowerHold_; }
 
 private:
     void applyBrightness();
@@ -37,7 +41,7 @@ private:
     DeviceModel model_ = DeviceModel::Unknown;
     bool hasImu_ = false;
     uint8_t brightness_ = 0;
-    uint8_t ledPowerFloor_ = 0;
+    bool ledPowerHold_ = false;
 };
 
 }  // namespace lgremote

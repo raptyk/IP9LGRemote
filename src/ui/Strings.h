@@ -108,7 +108,9 @@ constexpr const char* kMenuBrightnessText = "Screen brightness. Lower saves batt
 constexpr const char* kMenuKeyClick = "Key click sound";
 constexpr const char* kMenuKeyClickText = "Short beep on every key press.";
 constexpr const char* kMenuStatusLed = "Status light";
-constexpr const char* kMenuStatusLedText = "RGB LED: flash = sent, pulsing = connecting, green/red = ok/error.";
+constexpr const char* kMenuStatusLedText = "LED flash = sent, pulse = connecting. ADV: keeps screen at max.";
+constexpr const char* kBrightnessLocked = "Max (LED)";
+constexpr const char* kBrightnessLockedToast = "ADV: the LED shares the screen power. Turn Status light off to dim.";
 constexpr const char* kMenuTestLed = "Test status light";
 constexpr const char* kMenuTestLedText = "Shows red, green, blue and white on the LED.";
 constexpr const char* kTestLedOff = "Status light is off";

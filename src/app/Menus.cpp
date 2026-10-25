@@ -334,9 +334,16 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
                      str::kMenuInvertYText});
     items.push_back(
         {str::kMenuBrightness,
-         [&app]() { return String(brightnessIndex(app.settings().brightness) + 1) + " / " + kBrightnessLevelCount; },
+         [&app]() -> String {
+             if (app.device().brightnessLocked()) return String(str::kBrightnessLocked);
+             return String(brightnessIndex(app.settings().brightness) + 1) + " / " + kBrightnessLevelCount;
+         },
          nullptr,
          [&app](int delta) {
+             if (app.device().brightnessLocked()) {
+                 app.toast(str::kBrightnessLockedToast);
+                 return;
+             }
              const int index = constrain(static_cast<int>(brightnessIndex(app.settings().brightness)) + delta, 0,
                                          static_cast<int>(kBrightnessLevelCount) - 1);
              app.settings().brightness = kBrightnessLevels[index];
