@@ -10,25 +10,22 @@ namespace lgremote {
 namespace {
 constexpr uint32_t kBreathPeriodMs = 2400;
 constexpr uint8_t kSteadyLevel = 40;  // pointer mode: a gentle glow, not a torch
-// A lit LED is re-sent regularly so it recovers by itself if its supply was switched off
-// (on the ADV the LED VDD is the backlight rail, off while the screen is off).
+// A lit LED is re-sent regularly so it recovers by itself after its supply was off
+// (on the ADV the LED VDD is the backlight rail, which is off while the screen is off).
 constexpr uint32_t kRefreshMs = 50;
 }  // namespace
 
 void StatusLed::begin() {
-    // Driven with the Arduino core's neopixelWrite() (RMT, 24-bit GRB, NeoPixel timing).
-    // M5.Led cannot be used: M5Unified's RMT LED bus is empty on ESP-IDF 4.x (Arduino core 2.x).
-    pin_ = M5.getPin(m5::pin_name_t::rgb_led);
-    if (pin_ >= 0) {
-        show(0, 0);
-    }
+    // Plain NeoPixel output through the Arduino core (RMT, 24-bit GRB). M5.Led is not used:
+    // M5Unified's RMT LED bus is empty on ESP-IDF 4.x (Arduino core 2.x) and sends nothing.
+    pin_ = M5.getPin(m5::pin_name_t::rgb_led);  // GPIO21 on both models
+    show(0, 0);
 }
 
 void StatusLed::setEnabled(bool enabled) {
     enabled_ = enabled;
     if (!enabled_) {
-        burstCount_ = 0;
-        sequenceLength_ = 0;
+        stepCount_ = 0;
         show(0, 0);
     }
 }
@@ -38,25 +35,35 @@ void StatusLed::setBackground(LedPattern pattern, uint32_t colour) {
     patternColour_ = colour;
 }
 
+void StatusLed::startSteps() {
+    stepCount_ = 0;
+    stepsStartedAt_ = millis();
+}
+
+void StatusLed::addStep(uint32_t colour, uint16_t durationMs) {
+    if (stepCount_ < kMaxSteps && durationMs > 0) {
+        steps_[stepCount_++] = {colour, durationMs};
+    }
+}
+
 void StatusLed::flash(uint32_t colour, uint16_t durationMs) {
-    blink(colour, 1, durationMs, 0);
+    startSteps();
+    addStep(colour, durationMs);
 }
 
 void StatusLed::blink(uint32_t colour, uint8_t count, uint16_t onMs, uint16_t offMs) {
-    burstColour_ = colour;
-    burstCount_ = count;
-    burstOnMs_ = onMs;
-    burstOffMs_ = offMs;
-    burstStartedAt_ = millis();
+    startSteps();
+    for (uint8_t i = 0; i < count; ++i) {
+        addStep(colour, onMs);
+        addStep(0, offMs);
+    }
 }
 
 void StatusLed::playSequence(const uint32_t* colours, size_t count, uint16_t stepMs) {
-    sequenceLength_ = count < kMaxSequence ? count : kMaxSequence;
-    for (size_t i = 0; i < sequenceLength_; ++i) {
-        sequence_[i] = colours[i];
+    startSteps();
+    for (size_t i = 0; i < count; ++i) {
+        addStep(colours[i], stepMs);
     }
-    sequenceStepMs_ = stepMs;
-    sequenceStartedAt_ = millis();
 }
 
 void StatusLed::loop() {
@@ -65,25 +72,16 @@ void StatusLed::loop() {
     }
     const uint32_t now = millis();
 
-    // Sequences and one-shot signals win over the background pattern.
-    if (sequenceLength_ > 0) {
-        const size_t step = (now - sequenceStartedAt_) / sequenceStepMs_;
-        if (step < sequenceLength_) {
-            show(sequence_[step], kMaxLevel);
+    // Timed steps win over the background pattern.
+    uint32_t elapsed = now - stepsStartedAt_;
+    for (size_t i = 0; i < stepCount_; ++i) {
+        if (elapsed < steps_[i].durationMs) {
+            show(steps_[i].colour, steps_[i].colour != 0 ? kMaxLevel : 0);
             return;
         }
-        sequenceLength_ = 0;
+        elapsed -= steps_[i].durationMs;
     }
-    if (burstCount_ > 0) {
-        const uint32_t cycle = burstOnMs_ + burstOffMs_;
-        const uint32_t elapsed = now - burstStartedAt_;
-        if (elapsed < cycle * burstCount_) {
-            const bool on = (elapsed % cycle) < burstOnMs_;
-            show(burstColour_, on ? kMaxLevel : 0);
-            return;
-        }
-        burstCount_ = 0;
-    }
+    stepCount_ = 0;
 
     switch (pattern_) {
         case LedPattern::Off:

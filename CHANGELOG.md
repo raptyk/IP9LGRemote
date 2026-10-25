@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.5 – 2026-10-25
+
+- Status light code simplified: flashes, blink bursts and colour sequences share one queue of
+  timed steps on top of the background pattern (behaviour unchanged).
+
 ## 1.3.4 – 2026-10-25
 
 - Release images are named `LGRemoteCardputer-<version>.bin`: M5Launcher names the app
