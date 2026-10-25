@@ -34,7 +34,7 @@ Cardputer (works on Cardputer and Cardputer ADV; select both if M5Burner offers 
 
 ## GitHub link
 
-(add the repository URL once it is public)
+https://github.com/raptyk/LGTVRemoteCardputer
 
 ## Cover image
 

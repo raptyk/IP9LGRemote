@@ -25,7 +25,7 @@ Build both with `pio run`; check the first byte of each file is `0xE9` (ESP imag
    - **Version**: the firmware version, e.g. `1.5.0` (same as `APP_VERSION` in `platformio.ini`)
    - **Description**: the "Description" section
    - **Device type**: Cardputer (and Cardputer ADV if offered)
-   - **GitHub link**: repository URL (once public)
+   - **GitHub link**: https://github.com/raptyk/LGTVRemoteCardputer
    - **FirmWare**: `LGTVRemoteCardputer-<version>-full.bin`
    - **Cover**: [`cover.png`](cover.png) (1280×720) or [`cover-square.png`](cover-square.png) (800×800)
 4. After the upload, switch the entry to **public** (Publish button). **Share** creates a share

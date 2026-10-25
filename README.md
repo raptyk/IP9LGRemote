@@ -1,4 +1,4 @@
-# CardputerLGRemote
+# LGTVRemoteCardputer
 
 A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Cardputer ADV**.
 
@@ -10,7 +10,7 @@ A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Car
 - **Air mouse** – on the Cardputer ADV the BMI270 gyroscope moves the cursor like a Magic Remote;
   on both models the arrow keys can move it too.
 
-Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT
+Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT · https://github.com/raptyk/LGTVRemoteCardputer
 
 ## Install with M5Launcher
 
