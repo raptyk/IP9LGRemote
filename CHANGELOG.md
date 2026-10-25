@@ -2,6 +2,9 @@
 
 ## 1.3.4 – 2026-10-25
 
+- Release images are named `LGRemoteCardputer-<version>.bin`: M5Launcher names the app
+  partition after the first letters of the file, and "Cardp…" clashed with other apps.
+
 - Fixed: 1.3.3 started with a black screen. Re-initialising M5GFX's backlight PWM driver
   (20 kHz) is removed; M5GFX internals are no longer touched.
 - Status light on the Cardputer ADV, done the way the schematic and M5Stack docs describe it:
