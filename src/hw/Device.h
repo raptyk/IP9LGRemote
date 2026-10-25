@@ -16,13 +16,16 @@ constexpr uint8_t kIrTx = 44;  // same on Cardputer and Cardputer ADV
 class Device {
 public:
     void begin();
+    // Samples the battery (every 2 s); call from the main loop.
+    void update();
 
     DeviceModel model() const { return model_; }
     const char* modelName() const;
     bool hasImu() const { return hasImu_; }
 
-    int batteryPercent() const;
-    bool isCharging() const;
+    // Smoothed battery level (0..100, -1 = unknown) and charger state, see update().
+    int batteryPercent() const { return batteryShown_; }
+    bool isCharging() const { return charging_; }
 
     void setBrightness(uint8_t level);
     uint8_t brightness() const { return brightness_; }
@@ -42,6 +45,11 @@ private:
     bool hasImu_ = false;
     uint8_t brightness_ = 0;
     bool ledPowerHold_ = false;
+
+    uint32_t batterySampledAt_ = 0;
+    float batteryFiltered_ = -1;
+    int batteryShown_ = -1;
+    bool charging_ = false;
 };
 
 }  // namespace lgremote

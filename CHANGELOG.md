@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2 – 2026-10-25
+
+- Battery gauge no longer flickers (e.g. 35 % ↔ 37 %): the level is sampled every 2 s,
+  smoothed with an exponential moving average and only moves down while discharging (up while
+  charging); the opposite direction needs a 3 % margin. Charger plug/unplug resets the filter.
+
 ## 1.4.1 – 2026-10-25
 
 - Remote screen shows the connection state at a glance: green check + "Connected" + TV name,

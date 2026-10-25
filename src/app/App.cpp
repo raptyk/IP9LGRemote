@@ -77,6 +77,7 @@ void App::begin() {
 
 void App::loop() {
     M5Cardputer.update();
+    device_.update();
     keyboard_.update();
     handleInput();
     syncServices();
