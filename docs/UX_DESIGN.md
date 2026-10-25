@@ -69,10 +69,10 @@ mode colour and starts with a solid band in that colour.
 ├──────────────────────────────────────────┤
 │ (wifi) WI-FI REMOTE              via WI-FI│  band in the mode colour (24 px)
 │                                          │
-│   Connected to Living room TV.           │  middle (52 px): mode hint,
-│   No need to aim at the TV.              │  or the last command, or the pointer
+│  (✓)  Connected                          │  middle (52 px): connection badge,
+│       Living room TV                     │  or the last command, or the pointer
 │                                          │
-│ [TAB] Help    [OPT] Home    [A] Air mouse │  drawn key caps (25 px)
+│ [TAB] Help    [OPT] Menu    [A] Air mouse │  drawn key caps (25 px)
 ├──────────────────────────────────────────┤
 │ t type  l apps  p power  0-9 digits      │  footer: more keys (16 px)
 └──────────────────────────────────────────┘
@@ -80,8 +80,10 @@ mode colour and starts with a solid band in that colour.
 
 - Band titles: WI-FI REMOTE (blue), IR REMOTE (orange), BLUETOOTH REMOTE (violet),
   USB REMOTE (green), SERVICE MENU (IR); AIR MOUSE / POINTER while the pointer is on.
-- The hint depends on the mode: only IR (and Wi-Fi while the TV is not connected yet,
-  because keys then fall back to IR) asks the user to aim at the TV.
+- Connection badge: green check = connected (with the TV name), amber dots = connecting /
+  waiting for the TV, red "!" = not connected (keys fall back to IR, so the detail asks to aim
+  at the TV), mode-coloured "i" = infrared (nothing to connect).
+- `OPT` (or `fn` + `esc`) leaves the remote for the app menu; `esc` alone stays the TV's Exit key.
 - After a key press the middle shows the command (accent flash for ~120 ms, 1.5 s in
   total) and the band shows which link delivered it ("via IR", "via WI-FI").
 - In pointer mode the key caps change to [ENTER] Click, [ [ ] ] Scroll, [A] Exit.
@@ -114,7 +116,7 @@ mode colour and starts with a solid band in that colour.
 | `[` / `]` in pointer mode | Scroll up / down | the Magic Remote wheel |
 | `t` | Type text on the TV | Wi-Fi, Bluetooth, USB |
 | `l` | App launcher | network; Netflix / Prime / Disney+ also over IR |
-| `opt` | Back to the home screen | |
+| `opt` or `fn` + `esc` | Back to the app menu (home screen) | `esc` alone = TV Exit |
 | `tab` (also `?`, `fn`+`h`) | Help (cheat sheet) | `?` = shift + `/`, which is also the right arrow |
 
 ## Links (transports)

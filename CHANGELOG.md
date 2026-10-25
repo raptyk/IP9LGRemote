@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 – 2026-10-25
+
+- Remote screen shows the connection state at a glance: green check + "Connected" + TV name,
+  amber dots while connecting, red "!" when not connected (keys then go over IR).
+- Leaving the remote: the key cap now reads "[OPT] Menu" (was "Home", easily confused with the
+  TV's Home key) and `fn` + `esc` works too; `esc` alone remains the TV's Exit key.
+- Removed the redundant "No need to aim at the TV" text.
+
 ## 1.4.0 – 2026-10-25
 
 - Release images are named `LGTVRemoteCardputer-<version>.bin` (shorter, clearer partition

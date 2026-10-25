@@ -117,10 +117,18 @@ bool RemoteScreen::handleAction(const KeyEvent& event) {
     }
     switch (event.code) {
         case keycode::kOpt:
-            // Back to the home screen (mode choice, settings, help).
+            // Back to the app menu (home screen: mode choice, settings, help).
             stopPointer();
             app_.pop();
             return true;
+        case keycode::kEsc:
+            // esc alone is the TV's Exit key; fn + esc leaves the remote, like in other Cardputer apps.
+            if (event.fn) {
+                stopPointer();
+                app_.pop();
+                return true;
+            }
+            return false;
         case keycode::kButtonG0:
         case 'a':
             if (infraredOnly_) {
@@ -365,7 +373,7 @@ void RemoteScreen::drawKeyRow(M5Canvas& canvas, int top, int height) {
         hints[count++] = {str::kKeyA, str::kKeyExit};
     } else {
         hints[count++] = {str::kKeyTab, str::kKeyHelp};
-        hints[count++] = {str::kKeyOpt, infraredOnly_ ? str::kKeyBack : str::kKeyHome};
+        hints[count++] = {str::kKeyOpt, infraredOnly_ ? str::kKeyBack : str::kKeyMenu};
         if (!infraredOnly_ && shownMode() != LinkMode::Ir) {
             hints[count++] = {str::kKeyA, app_.airMouse().available() ? str::kKeyAirMouse : str::kKeyPointer};
         }
@@ -384,40 +392,102 @@ void RemoteScreen::drawKeyRow(M5Canvas& canvas, int top, int height) {
     }
 }
 
-String RemoteScreen::idleHint() const {
+RemoteScreen::ConnectionStatus RemoteScreen::connectionStatus() const {
     if (infraredOnly_) {
-        return str::kServiceKeypadText;
+        return {StatusKind::Info, str::kBandService, str::kServiceKeypadText};
     }
     switch (shownMode()) {
         case LinkMode::Ir:
-            return str::kHintIr;
+            return {StatusKind::Info, str::kStatusInfrared, str::kStatusInfraredDetail};
         case LinkMode::Ble:
-            return app_.ble().isConnected() ? str::kHintBleReady : str::kHintBleWaiting;
-        case LinkMode::Usb:
-            return app_.usb().isMounted() ? str::kHintUsbReady : str::kHintUsbWaiting;
-        default: {
-            if (!app_.webos().isReady() && !app_.ipControl().isReady()) {
-                return str::kHintWifiOffline;
+            if (app_.ble().isConnected()) {
+                return {StatusKind::Ok, str::kStatusConnected, str::kStatusBleDetail};
             }
+            return {StatusKind::Waiting, str::kStatusWaitingTv, str::kStatusBleWaitingDetail};
+        case LinkMode::Usb:
+            if (app_.usb().isMounted()) {
+                return {StatusKind::Ok, str::kStatusConnected, str::kStatusUsbDetail};
+            }
+            return {StatusKind::Waiting, str::kStatusWaitingTv, str::kStatusUsbWaitingDetail};
+        default: {
             const Settings& settings = app_.settings();
             const String tv = settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
-            return String(str::kHintWifiConnected) + tv + ". " + str::kHintNoAim;
+            if (app_.webos().isReady() || app_.ipControl().isReady()) {
+                return {StatusKind::Ok, str::kStatusConnected, tv};
+            }
+            const WebOsStatus status = app_.webos().status();
+            if (app_.webos().state() == LinkState::Connecting) {
+                return {StatusKind::Waiting, str::kStatusConnecting, String(webOsStatusText(status)) + ": " + tv};
+            }
+            // Not connected: keys still work, they fall back to infrared.
+            return {StatusKind::Error, webOsStatusText(status), str::kStatusIrFallbackDetail};
         }
+    }
+}
+
+void RemoteScreen::drawStatusBadge(M5Canvas& canvas, int cx, int cy, StatusKind kind) {
+    using namespace theme;
+    const int radius = 13;
+    uint16_t colour = kOk;
+    switch (kind) {
+        case StatusKind::Ok: colour = kOk; break;
+        case StatusKind::Waiting: colour = kWarn; break;
+        case StatusKind::Error: colour = kError; break;
+        case StatusKind::Info: colour = ui::modeColour(shownMode()); break;
+    }
+    canvas.fillCircle(cx, cy, radius, colour);
+    switch (kind) {
+        case StatusKind::Ok:
+            // Check mark.
+            canvas.drawWideLine(cx - 6, cy, cx - 2, cy + 5, 1.6f, kText);
+            canvas.drawWideLine(cx - 2, cy + 5, cx + 6, cy - 5, 1.6f, kText);
+            break;
+        case StatusKind::Waiting: {
+            // Three dots, the active one moves.
+            const int phase = (millis() / 300) % 3;
+            for (int i = 0; i < 3; ++i) {
+                canvas.fillCircle(cx + (i - 1) * 6, cy, i == phase ? 3 : 2, kText);
+            }
+            break;
+        }
+        case StatusKind::Error:
+            canvas.fillRoundRect(cx - 2, cy - 8, 4, 10, 2, kText);
+            canvas.fillCircle(cx, cy + 6, 2, kText);
+            break;
+        case StatusKind::Info:
+            canvas.fillCircle(cx, cy - 6, 2, kText);
+            canvas.fillRoundRect(cx - 2, cy - 2, 4, 10, 2, kText);
+            break;
     }
 }
 
 void RemoteScreen::drawIdle(M5Canvas& canvas, int top, int height) {
     using namespace theme;
-    const String hint = idleHint();
-    const int lineHeight = 15;
-    const int maxWidth = kScreenWidth - 2 * kPadding;
-    canvas.setFont(&fonts::Font2);
+    const ConnectionStatus status = connectionStatus();
+    const int centerY = top + height / 2;
+    const int badgeX = 24;
+    drawStatusBadge(canvas, badgeX, centerY, status.kind);
+    if (status.kind == StatusKind::Waiting) {
+        app_.invalidate();  // animate the dots
+    }
+
+    // Title (bold) and detail (wrapped) next to the badge.
+    const int textX = badgeX + 22;
+    const int maxWidth = kScreenWidth - textX - kPadding;
     canvas.setTextSize(1);
+    canvas.setFont(&fonts::Font2);
+    const int detailLines = min<int>(painter::wrapText(canvas, status.detail, maxWidth).size(), 2);
+    const int blockHeight = 18 + detailLines * 14;
+    const int y = centerY - blockHeight / 2;
+
+    canvas.setFont(&fonts::FreeSansBold9pt7b);
     canvas.setTextColor(kText);
-    canvas.setTextDatum(top_center);
-    const int lines = min<int>(painter::wrapText(canvas, hint, maxWidth).size(), 3);
-    const int y = top + (height - lines * lineHeight) / 2;
-    painter::drawWrappedText(canvas, hint, kScreenWidth / 2, y, maxWidth, lineHeight, 3);
+    canvas.setTextDatum(top_left);
+    painter::drawClippedText(canvas, status.title, textX, y, maxWidth);
+
+    canvas.setFont(&fonts::Font2);
+    canvas.setTextColor(kTextMuted);
+    painter::drawWrappedText(canvas, status.detail, textX, y + 18, maxWidth, 14, 2);
 }
 
 void RemoteScreen::drawFeedback(M5Canvas& canvas, int top, int height) {

@@ -60,7 +60,7 @@ Arrows work with or without `fn` (the Cardputer convention `fn` + `;` `.` `,` `/
 | `z` `x` `c` | Rewind / Stop / Forward | `r` `g` `y` `b` | colour keys |
 | `a` / `G0` | pointer on/off | `[` `]` | scroll (pointer mode) |
 | `t` | type on TV | `l` | apps |
-| `opt` | back to home screen | `tab` | help |
+| `opt` / `fn`+`esc` | back to the app menu | `tab` | help |
 
 Design rationale: [docs/UX_DESIGN.md](docs/UX_DESIGN.md). Protocol research: [docs/PROTOCOLS.md](docs/PROTOCOLS.md).
 

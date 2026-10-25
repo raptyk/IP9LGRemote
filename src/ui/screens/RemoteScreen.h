@@ -35,7 +35,17 @@ private:
     static constexpr int kKeyRowHeight = 25;
 
     LinkMode shownMode() const;
-    String idleHint() const;
+    enum class StatusKind : uint8_t { Ok, Waiting, Error, Info };
+    struct ConnectionStatus {
+        StatusKind kind;
+        String title;
+        String detail;
+    };
+
+    // What the idle screen says about the link: green check = connected, amber = connecting,
+    // red = not connected (keys fall back to IR), mode colour = infrared (nothing to connect).
+    ConnectionStatus connectionStatus() const;
+    void drawStatusBadge(M5Canvas& canvas, int cx, int cy, StatusKind kind);
     void drawBand(M5Canvas& canvas, int top, bool showVia);
     void drawKeyRow(M5Canvas& canvas, int top, int height);
     void drawIdle(M5Canvas& canvas, int top, int height);

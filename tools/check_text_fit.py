@@ -65,7 +65,8 @@ RULES = [
     (r"^kPair\w+Title$|^kIrTestQuestion$", "FreeSansBold9pt7b", 228, 1),
     (r"Hint$|^kPair\w+Text$|^kPairChecks$", "Font2", 228, 3),
     (r"^kHomeStatus$|^kUsbNotConnected$|^kInfrared$", "Font0", 130, 1),
-    (r"^kHint", "Font2", 228, 3),                      # remote screen hint (middle area)
+    (r"^kStatus\w+Detail$", "Font2", 188, 2),         # next to the connection badge
+    (r"^kStatus(?!.*Detail)", "FreeSansBold9pt7b", 188, 1),
     (r"^kBand", "FreeSansBold9pt7b", 200, 1),          # coloured mode band
     (r"^kPointerHint", "Font2", 160, 3),               # next to the crosshair
 ]
@@ -96,7 +97,7 @@ def key_hint(key, label):
 
 
 for row in (
-    [("kKeyTab", "kKeyHelp"), ("kKeyOpt", "kKeyHome"), ("kKeyA", "kKeyAirMouse")],
+    [("kKeyTab", "kKeyHelp"), ("kKeyOpt", "kKeyMenu"), ("kKeyA", "kKeyAirMouse")],
     [("kKeyEnter", "kKeyClick"), ("kKeyBrackets", "kKeyScroll"), ("kKeyA", "kKeyExit")],
 ):
     total = sum(key_hint(strings[k], strings[l]) for k, l in row)
