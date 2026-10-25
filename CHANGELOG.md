@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0 – 2026-10-25
+
+- Part of the IP9 apps (https://cardputer.ip9.pl): the remote is now **IP9 LG Remote**, the
+  repository `IP9LGRemote` and the release images `IP9LGRemote-<version>[-full].bin`.
+- Built on [IP9Kit](https://github.com/raptyk/IP9Kit) 1.0.0, the core shared with the other IP9 apps
+  (app shell, home carousel, menus, help, dialogs, keyboard, status LED, battery). No change for the
+  user except: list footers say `esc back` (both `esc` and `del` go back, as before), the settings
+  icon on the home card is cut out in the card colour, and *About* shows the IP9 website.
+- Settings, the TV pairing and the SD card backup (`/config/lgtv-remote/settings.json`) are kept.
+
 ## 1.5.0 – 2026-10-25
 
 - Settings backup on the SD card, so a re-install from M5Launcher (which may wipe NVS) keeps

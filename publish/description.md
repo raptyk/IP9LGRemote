@@ -1,8 +1,8 @@
-# M5Burner listing – LG TV Remote
+# M5Burner listing – IP9 LG Remote
 
 ## Name
 
-LG TV Remote
+IP9 LG Remote
 
 ## Short description (one line)
 
@@ -26,7 +26,7 @@ Keys: arrows `; . , /`, `enter` OK, `del` Back, `h` Home, `= -` volume, `[ ]` ch
 `a` pointer, `t` type text, `l` apps, `TAB` help, `OPT` app menu.
 
 Works on M5Stack Cardputer and Cardputer ADV. Install with M5Burner or M5Launcher.
-Open source (MIT) – author: Patryk Strzelecki.
+Open source (MIT) – author: Patryk Strzelecki. More IP9 apps: https://cardputer.ip9.pl
 
 ## Device type
 
@@ -34,7 +34,7 @@ Cardputer (works on Cardputer and Cardputer ADV; select both if M5Burner offers 
 
 ## GitHub link
 
-https://github.com/raptyk/LGTVRemoteCardputer
+https://github.com/raptyk/IP9LGRemote
 
 ## Cover image
 

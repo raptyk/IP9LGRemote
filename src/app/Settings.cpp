@@ -99,7 +99,7 @@ void Settings::save() const {
 
 void Settings::toJson(JsonObject root) const {
     root["schemaVersion"] = kSchemaVersion;
-    root["app"] = "LGTVRemoteCardputer";
+    root["app"] = "IP9LGRemote";
     root["linkMode"] = modeKey(linkMode);
 
     JsonObject wifi = root["wifi"].to<JsonObject>();

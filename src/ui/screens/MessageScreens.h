@@ -9,52 +9,14 @@
 
 #include "net/WifiService.h"
 #include "ui/Screen.h"
-#include "ui/screens/ListScreen.h"
 
 namespace lgremote {
-
-// Yes / no question. Enter confirms, esc / del cancels.
-class ConfirmScreen : public Screen {
-public:
-    ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm,
-                  std::function<void()> onCancel = nullptr);
-
-    void onKey(const KeyEvent& event) override;
-    void draw(M5Canvas& canvas, int top, int height) override;
-    const char* footer() const override;
-
-private:
-    String question_;
-    String detail_;
-    std::function<void()> onConfirm_;
-    std::function<void()> onCancel_;
-};
-
-// Small pop-up card with a title and up to two lines of text; any of enter/esc/del closes it.
-class InfoScreen : public Screen {
-public:
-    // `autoCloseMs` > 0 closes the pop-up by itself (success messages).
-    InfoScreen(App& app, String title, String body, String detail = String(), uint32_t autoCloseMs = 0);
-
-    void onEnter() override;
-    void onKey(const KeyEvent& event) override;
-    void tick() override;
-    void draw(M5Canvas& canvas, int top, int height) override;
-    const char* footer() const override;
-
-private:
-    String title_;
-    String body_;
-    String detail_;
-    uint32_t autoCloseMs_;
-    uint32_t shownAt_ = 0;
-};
 
 // Pairing with the TV over the network. Explains what to do on the TV for every state
 // (prompt, PIN, failure with reason) and returns to `returnTo` once paired.
 class TvPairingScreen : public Screen {
 public:
-    TvPairingScreen(App& app, Screen* returnTo);
+    TvPairingScreen(App& app, ip9::Screen* returnTo);
 
     void onEnter() override;
     void onKey(const KeyEvent& event) override;
@@ -66,7 +28,7 @@ private:
     void askForPin();
     void switchMethod();
 
-    Screen* returnTo_;
+    ip9::Screen* returnTo_;
     uint32_t readySince_ = 0;
     bool pinAsked_ = false;
     bool failureSignalled_ = false;  // one warning blink per failure, not a blinking loop
@@ -114,7 +76,7 @@ private:
 // Searches the LAN for webOS TVs (SSDP) and offers manual IP entry.
 class TvSearchScreen : public ListScreen {
 public:
-    TvSearchScreen(App& app, Screen* returnTo);
+    TvSearchScreen(App& app, ip9::Screen* returnTo);
 
     void onEnter() override;
     void tick() override;
@@ -125,7 +87,7 @@ protected:
 private:
     void rebuild();
 
-    Screen* returnTo_;
+    ip9::Screen* returnTo_;
     bool started_ = false;
 };
 

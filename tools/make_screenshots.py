@@ -224,7 +224,7 @@ def setup():
     s.r(6, 97, 234, 97.6, SURFACE_HIGH)
     s.t(6, 100, "Search the network, or type the IP (TV:", F0(), MUTED)
     s.t(6, 110, "Settings > Network > Advanced).", F0(), MUTED)
-    s.footer("enter select  del back")
+    s.footer("enter select  esc back")
     s.save("setup.png")
 
 
@@ -243,7 +243,7 @@ def settings():
     s.r(6, 97, 234, 97.6, SURFACE_HIGH)
     s.t(6, 100, "Network the Cardputer joins. Must be the", F0(), MUTED)
     s.t(6, 110, "same as the TV's.", F0(), MUTED)
-    s.footer("enter select  del back")
+    s.footer("enter select  esc back")
     s.save("settings.png")
 
 

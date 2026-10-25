@@ -1,8 +1,9 @@
-# LGTVRemoteCardputer
+# IP9 LG Remote
 
-![LG TV Remote for M5Stack Cardputer & ADV](publish/cover.png)
+![IP9 LG Remote for M5Stack Cardputer & ADV](publish/cover.png)
 
 A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Cardputer ADV**.
+One of the IP9 apps for the Cardputer – **https://cardputer.ip9.pl**.
 
 - **Wi-Fi remote (webOS API)** – pointer (cursor), typing on the TV, app launcher, volume level,
   with **LG IP Control** as a TLS-free fallback and infrared for keys the network cannot send.
@@ -12,7 +13,7 @@ A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Car
 - **Air mouse** – on the Cardputer ADV the BMI270 gyroscope moves the cursor like a Magic Remote;
   on both models the arrow keys can move it too.
 
-Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT · https://github.com/raptyk/LGTVRemoteCardputer
+Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT · https://github.com/raptyk/IP9LGRemote
 
 ## Screens
 
@@ -32,14 +33,14 @@ on the device the fonts are the M5GFX bitmap fonts.
 
 ## Install with M5Launcher
 
-1. Download (or build) `release/LGTVRemoteCardputer-<version>.bin`.
+1. Download (or build) `release/IP9LGRemote-<version>.bin`.
 2. Copy it to the SD card (FAT32).
 3. In M5Launcher: **SD → select the file → Install**.
 
 The `-full.bin` image (bootloader + partitions + app) can be flashed without Launcher:
 
 ```bash
-esptool.py --chip esp32s3 write_flash 0x0 release/LGTVRemoteCardputer-1.4.0-full.bin
+esptool.py --chip esp32s3 write_flash 0x0 release/IP9LGRemote-1.6.0-full.bin
 ```
 
 ## First steps
@@ -88,11 +89,16 @@ Design rationale: [docs/UX_DESIGN.md](docs/UX_DESIGN.md). Protocol research: [do
 
 ## Build
 
-Requires [PlatformIO](https://platformio.org/).
+Requires [PlatformIO](https://platformio.org/). The shared IP9 core,
+[IP9Kit](https://github.com/raptyk/IP9Kit) (app shell, menus, home carousel, help, dialogs,
+keyboard, status LED, battery), is fetched by PlatformIO at the version pinned in `platformio.ini`.
 
 ```bash
 pio run
 ```
+
+To change IP9Kit together with the remote, clone it next to this folder (`../IP9Kit`) and copy
+`ip9kit-local.ini.example` to `ip9kit-local.ini`.
 
 The post-build script writes both images to `release/`. `python tools/check_text_fit.py` checks
 that every UI string fits the 240×135 screen using the real font metrics.
@@ -111,8 +117,8 @@ src/
   ipcontrol/  LG IP Control client (AES / PBKDF2)
   ble/        BLE HID composite device (NimBLE)
   usb/        USB HID composite device (TinyUSB)
-  hw/         device detection, keyboard events, air mouse
-  ui/         theme, strings, icons, painter helpers, screens
+  hw/         air mouse (device, keyboard and status LED come from IP9Kit)
+  ui/         theme, strings, icons, mode styles, screens (on the IP9Kit screen classes)
 tools/        development helpers (text fit check)
 ```
 

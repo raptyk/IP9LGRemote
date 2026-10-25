@@ -8,8 +8,8 @@ entry for the Cardputer also shows up in M5Launcher. M5Burner Desktop is discont
 
 | Field / use | File |
 |---|---|
-| **M5Burner "FirmWare"** | `release/LGTVRemoteCardputer-<version>-full.bin` – merged image (bootloader + partitions + app), flashed at `0x0` |
-| SD card install with M5Launcher | `release/LGTVRemoteCardputer-<version>.bin` – app image only |
+| **M5Burner "FirmWare"** | `release/IP9LGRemote-<version>-full.bin` – merged image (bootloader + partitions + app), flashed at `0x0` |
+| SD card install with M5Launcher | `release/IP9LGRemote-<version>.bin` – app image only |
 
 Upload the **`-full.bin`**: M5Burner writes images from address `0x0`; M5Launcher extracts the
 application from a merged image by itself. Never upload the app-only `.bin` to M5Burner – flashed
@@ -22,12 +22,12 @@ Build both with `pio run`; check the first byte of each file is `0xE9` (ESP imag
 1. Open https://burner.m5stack.com and **Log in** with the M5Stack community account.
 2. In your account area add a new firmware (the upload form appears after logging in).
 3. Fill in the form from [`description.md`](description.md):
-   - **Name**: `LG TV Remote`
-   - **Version**: the firmware version, e.g. `1.5.0` (same as `APP_VERSION` in `platformio.ini`)
+   - **Name**: `IP9 LG Remote`
+   - **Version**: the firmware version, e.g. `1.6.0` (same as `APP_VERSION` in `platformio.ini`)
    - **Description**: the "Description" section
    - **Device type**: Cardputer (and Cardputer ADV if offered)
-   - **GitHub link**: https://github.com/raptyk/LGTVRemoteCardputer
-   - **FirmWare**: `LGTVRemoteCardputer-<version>-full.bin`
+   - **GitHub link**: https://github.com/raptyk/IP9LGRemote
+   - **FirmWare**: `IP9LGRemote-<version>-full.bin`
    - **Cover**: [`cover.png`](cover.png) (1280×720) or [`cover-square.png`](cover-square.png) (800×800)
 4. After the upload, switch the entry to **public** (Publish button). **Share** creates a share
    code for testers before going public.
@@ -38,7 +38,8 @@ Build both with `pio run`; check the first byte of each file is `0xE9` (ESP imag
 
 Bump `APP_VERSION`, run `pio run`, regenerate the cover if the UI changed
 (`python tools/make_cover.py`), add `release-notes-<version>.md`, then edit the existing WebBurner
-entry (new version + new `-full.bin`) instead of publishing a second one.
+entry (new version + new `-full.bin`) instead of publishing a second one. From 1.6.0 the entry is
+named **IP9 LG Remote** (was *LG TV Remote*): rename the existing entry, do not publish a new one.
 
 ## Starred list in M5Launcher
 

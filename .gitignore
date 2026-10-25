@@ -2,3 +2,5 @@
 .vscode/
 release/
 *.pyc
+.idea/
+ip9kit-local.ini

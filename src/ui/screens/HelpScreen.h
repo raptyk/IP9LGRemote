@@ -7,16 +7,9 @@
 namespace lgremote {
 
 // Cheat sheet of the remote key map, split into pages (< > to flip).
-class HelpScreen : public Screen {
+class HelpScreen : public ip9::HelpScreen {
 public:
-    using Screen::Screen;
-
-    void onKey(const KeyEvent& event) override;
-    void draw(M5Canvas& canvas, int top, int height) override;
-    const char* footer() const override;
-
-private:
-    int page_ = 0;
+    explicit HelpScreen(App& app);
 };
 
 }  // namespace lgremote

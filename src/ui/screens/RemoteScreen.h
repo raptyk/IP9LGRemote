@@ -23,7 +23,7 @@ public:
     void tick() override;
     void draw(M5Canvas& canvas, int top, int height) override;
     const char* footer() const override;
-    bool forcesInfrared() const override { return infraredOnly_; }
+    uint32_t traits() const override { return infraredOnly_ ? trait::kInfraredOnly : 0; }
 
 private:
     void send(RemoteKey key);

@@ -4,10 +4,7 @@
 
 #include <M5Cardputer.h>
 
-#include <algorithm>
-
 #include "ui/ModeStyle.h"
-#include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
 #include "ui/screens/HomeScreen.h"
@@ -17,38 +14,22 @@ namespace lgremote {
 namespace {
 
 constexpr uint32_t kToastDurationMs = 1800;
-constexpr uint32_t kStatusRefreshMs = 500;
-constexpr uint8_t kDimBrightness = 24;
-constexpr uint32_t kMinFrameIntervalMs = 33;  // ~30 fps is plenty and leaves CPU time for input
-constexpr int kBatteryWidth = 52;             // battery icon + "100%" on the right of the status bar
 constexpr uint16_t kLedGreetingStepMs = 150;
 constexpr uint16_t kLedTestStepMs = 400;
 
 }  // namespace
 
-App::App()
-    : ir_(pins::kIrTx),
-      ble_(str::kBleDeviceName),
-      router_(ir_, webos_, ipControl_, ble_, usb_),
-      canvas_(&M5.Display) {}
+App::App() : ir_(pins::kIrTx), ble_(str::kBleDeviceName), router_(ir_, webos_, ipControl_, ble_, usb_) {}
 
 void App::begin() {
     auto config = M5.config();
     config.internal_imu = true;
     config.internal_mic = false;
     config.serial_baudrate = 0;  // UART0 shares GPIO43/44 with the speaker clock and the IR LED
-    M5Cardputer.begin(config, true);
-    M5.Display.setRotation(1);
+    beginShell(config, theme::kAccent);
+    setToastDuration(kToastDurationMs);
 
-    device_.begin();
     const bool restoredFromCard = loadSettings();
-
-    canvas_.setColorDepth(16);
-    if (!canvas_.createSprite(theme::kScreenWidth, theme::kScreenHeight)) {
-        // Not enough contiguous RAM for 16-bit: fall back to 8-bit colour.
-        canvas_.setColorDepth(8);
-        canvas_.createSprite(theme::kScreenWidth, theme::kScreenHeight);
-    }
 
     ir_.begin();
     airMouse_.begin(device_.hasImu());
@@ -75,75 +56,6 @@ void App::begin() {
     if (restoredFromCard) {
         toast(str::kBackupRestored);
     }
-    lastInputAt_ = millis();
-}
-
-void App::loop() {
-    M5Cardputer.update();
-    device_.update();
-    keyboard_.update();
-    handleInput();
-    syncServices();
-    if (!screens_.empty()) {
-        screens_.back()->tick();
-    }
-    retired_.clear();
-    updatePower();
-    updateStatusLed();
-    statusLed_.loop();
-
-    const uint32_t now = millis();
-    if (now - lastStatusRefreshAt_ >= kStatusRefreshMs) {
-        lastStatusRefreshAt_ = now;
-        dirty_ = true;  // status bar (battery, link state) may have changed
-    }
-    if (toastUntil_ != 0 && now > toastUntil_) {
-        toastUntil_ = 0;
-        dirty_ = true;
-    }
-    if (dirty_ && !screenOff_ && now - lastRenderAt_ >= kMinFrameIntervalMs) {
-        render();
-    }
-}
-
-void App::push(std::unique_ptr<Screen> screen) {
-    screens_.push_back(std::move(screen));
-    screens_.back()->onEnter();
-    dirty_ = true;
-}
-
-void App::pop() {
-    if (screens_.size() <= 1) {
-        return;  // the home screen is the root and never closes
-    }
-    retired_.push_back(std::move(screens_.back()));
-    screens_.pop_back();
-    screens_.back()->onEnter();
-    dirty_ = true;
-}
-
-void App::popToRoot() {
-    while (screens_.size() > 1) {
-        retired_.push_back(std::move(screens_.back()));
-        screens_.pop_back();
-    }
-    screens_.back()->onEnter();
-    dirty_ = true;
-}
-
-void App::popTo(Screen* target) {
-    const bool onStack = std::any_of(screens_.begin(), screens_.end(),
-                                     [target](const std::unique_ptr<Screen>& screen) { return screen.get() == target; });
-    if (!onStack) {
-        pop();
-        return;
-    }
-    while (screens_.size() > 1 && screens_.back().get() != target) {
-        retired_.push_back(std::move(screens_.back()));
-        screens_.pop_back();
-    }
-    screens_.back()->onEnter();
-    dirty_ = true;
 }
 
 bool App::loadSettings() {
@@ -168,22 +80,6 @@ void App::saveSettings() {
     }
 }
 
-void App::toast(const String& message) {
-    toastText_ = message;
-    toastUntil_ = millis() + kToastDurationMs;
-    dirty_ = true;
-}
-
-void App::warn(const String& message) {
-    toast(message);
-    signalWarning();
-}
-
-void App::signalWarning() {
-    // Once per event and short on purpose: a hint, not an alarm.
-    statusLed_.blink(ui::kLedError, 2, 70, 90, true);
-}
-
 void App::keyClick() {
     if (settings_.keyClick) {
         M5Cardputer.Speaker.tone(3200, 6);
@@ -206,20 +102,17 @@ void App::applyTvSettings() {
 }
 
 void App::applyDisplaySettings() {
-    // ADV: the LED is powered from the backlight rail, so an enabled status light keeps the
-    // backlight at full duty (see Device::setLedPowerHold).
-    device_.setLedPowerHold(settings_.statusLed);
-    device_.setBrightness(settings_.brightness);
+    setDisplayPower(settings_.brightness, settings_.dimTimeoutSec * 1000UL, settings_.offTimeoutSec * 1000UL,
+                    settings_.statusLed);
     airMouse_.setSpeed(settings_.pointerSpeed);
     airMouse_.setInvertY(settings_.pointerInvertY);
-    statusLed_.setEnabled(settings_.statusLed);
 }
 
 void App::selectMode(LinkMode mode) {
     settings_.linkMode = mode;
     router_.setMode(mode);
     saveSettings();
-    dirty_ = true;
+    invalidate();
 }
 
 void App::testStatusLed() {
@@ -231,12 +124,17 @@ void App::signalCommand(bool delivered) {
     if (delivered) {
         statusLed_.flash(ui::modeLedColour(displayedMode()));
     } else {
-        statusLed_.blink(ui::kLedError, 2, 60, 80);
+        statusLed_.blink(led::kError, 2, 60, 80);
     }
 }
 
 LinkMode App::displayedMode() const {
-    return !screens_.empty() && screens_.back()->forcesInfrared() ? LinkMode::Ir : settings_.linkMode;
+    const ip9::Screen* screen = top();
+    return screen != nullptr && (screen->traits() & trait::kInfraredOnly) ? LinkMode::Ir : settings_.linkMode;
+}
+
+bool App::keepAwake() const {
+    return airMouse_.active();
 }
 
 void App::updateStatusLed() {
@@ -269,15 +167,16 @@ void App::updateStatusLed() {
 
     if (mode == ledMode_ && ready != ledLinkReady_) {
         if (ready) {
-            statusLed_.blink(ui::kLedSuccess, 2);
+            statusLed_.blink(led::kSuccess, 2);
         } else {
-            statusLed_.blink(ui::kLedError, 3);
+            statusLed_.blink(led::kError, 3);
         }
     }
     ledMode_ = mode;
     ledLinkReady_ = ready;
 
-    const bool onLinkScreen = !screens_.empty() && screens_.back()->showsLinkStatus();
+    // Screens with their own chip (home launcher) are not tied to a link.
+    const bool onLinkScreen = top() != nullptr && top()->chipLabel() == nullptr;
     const uint32_t colour = ui::modeLedColour(mode);
     if (pointerActive_) {
         statusLed_.setBackground(LedPattern::Steady, colour);
@@ -285,41 +184,11 @@ void App::updateStatusLed() {
         statusLed_.setBackground(LedPattern::Breathing, colour);
     } else {
         statusLed_.setBackground(LedPattern::Off, 0);
-        if (millis() - lastBatteryBlinkAt_ > 10000) {
-            lastBatteryBlinkAt_ = millis();  // the battery ADC is read at most every 10 s
-            const int battery = device_.batteryPercent();
-            if (battery >= 0 && battery <= 10 && !device_.isCharging()) {
-                statusLed_.flash(ui::kLedError, 40);
-            }
-        }
+        blinkIfBatteryLow();
     }
 }
 
-void App::handleInput() {
-    while (keyboard_.hasEvent()) {
-        KeyEvent event = keyboard_.nextEvent();
-        lastInputAt_ = millis();
-        if (screenOff_) {
-            // The key that wakes the screen is swallowed, so nothing is sent by accident.
-            screenOff_ = false;
-            screenDimmed_ = false;
-            device_.setBrightness(settings_.brightness);
-            keyboard_.suppressHeldKeys();
-            dirty_ = true;
-            continue;
-        }
-        if (screenDimmed_) {
-            screenDimmed_ = false;
-            device_.setBrightness(settings_.brightness);
-        }
-        if (!screens_.empty()) {
-            screens_.back()->onKey(event);
-        }
-        dirty_ = true;
-    }
-}
-
-void App::syncServices() {
+void App::onLoop() {
     wifi_.loop();
     const bool online = wifi_.isConnected();
     webos_.setNetworkAvailable(online);
@@ -355,144 +224,45 @@ void App::syncServices() {
     }
 }
 
-void App::updatePower() {
-    const uint32_t idle = millis() - lastInputAt_;
-    if (keyboard_.anyHeld() || airMouse_.active()) {
-        lastInputAt_ = millis();
-        return;
-    }
-    if (!screenOff_ && settings_.offTimeoutSec > 0 && idle > settings_.offTimeoutSec * 1000UL) {
-        screenOff_ = true;
-        device_.setBrightness(0);
-    } else if (!screenDimmed_ && !screenOff_ && settings_.dimTimeoutSec > 0 && idle > settings_.dimTimeoutSec * 1000UL) {
-        screenDimmed_ = true;
-        device_.setBrightness(min<uint8_t>(kDimBrightness, settings_.brightness));
-    }
-}
-
-void App::render() {
-    dirty_ = false;
-    lastRenderAt_ = millis();
-    canvas_.fillScreen(theme::kBackground);
-
-    const int contentTop = theme::kStatusBarHeight;
-    const int contentHeight = theme::kScreenHeight - theme::kStatusBarHeight - theme::kFooterHeight;
-    Screen& screen = *screens_.back();
-    screen.draw(canvas_, contentTop, contentHeight);
-
-    drawStatusBar();
-    drawFooter(screen.footer());
-    drawToast();
-    canvas_.pushSprite(0, 0);
-}
-
-void App::drawStatusBar() {
+StatusLine App::statusLine(const ip9::Screen& top) {
     using namespace theme;
-    canvas_.fillRect(0, 0, kScreenWidth, kStatusBarHeight, kSurface);
+    if (top.chipLabel() != nullptr) {
+        // Home launcher: app chip instead of the link state.
+        return {top.chipLabel(), top.chipColour(), kAccent, str::kHomeStatus};
+    }
 
-    // Link mode chip: mode name on the mode's own colour (blue Wi-Fi, orange IR, ...).
-    const Screen& screen = *screens_.back();
-    const LinkMode shownMode = screen.forcesInfrared() ? LinkMode::Ir : settings_.linkMode;
-    const char* mode = screen.showsLinkStatus() ? linkModeName(shownMode) : "LG";
-    const uint16_t chipColour = screen.showsLinkStatus() ? ui::modeColour(shownMode) : kAccent;
-    canvas_.setFont(&fonts::Font0);
-    canvas_.setTextSize(1);
-    const int chipWidth = canvas_.textWidth(mode) + 12;
-    canvas_.fillRoundRect(2, 2, chipWidth, kStatusBarHeight - 4, 4, chipColour);
-    canvas_.setTextColor(kText);
-    canvas_.setTextDatum(middle_center);
-    canvas_.drawString(mode, 2 + chipWidth / 2, kStatusBarHeight / 2);
-
-    // Link state: coloured dot + what the remote talks to right now.
-    uint16_t dotColour = kOk;
-    String description;
+    // Link mode chip: mode name on the mode's own colour (blue Wi-Fi, orange IR, ...),
+    // then what the remote talks to right now.
+    const LinkMode shownMode = displayedMode();
+    StatusLine line{linkModeName(shownMode), ui::modeColour(shownMode), kOk, String()};
     const String tvLabel = settings_.tvName.isEmpty() ? settings_.tvHost : settings_.tvName;
-    if (!screen.showsLinkStatus()) {
-        description = str::kHomeStatus;
-        dotColour = kAccent;
-    } else {
-        switch (shownMode) {
-            case LinkMode::Ir:
-                description = str::kInfrared;
-                break;
-            case LinkMode::Ble:
-                description = ble_.isConnected() ? str::kBleConnected : str::kBleWaiting;
-                dotColour = ble_.isConnected() ? kOk : kWarn;
-                break;
-            case LinkMode::Usb:
-                description = usb_.isMounted() ? str::kBleConnected : str::kUsbNotConnected;
-                dotColour = usb_.isMounted() ? kOk : kWarn;
-                break;
-            case LinkMode::Auto:
-            case LinkMode::Lan:
-            default:
-                if (webos_.isReady() || ipControl_.isReady()) {
-                    description = tvLabel;
-                } else {
-                    description = webOsStatusText(webos_.status());
-                    if (settings_.linkMode == LinkMode::Auto) {
-                        description += str::kViaIrSuffix;
-                    }
-                    dotColour = webos_.state() == LinkState::Connecting ? kWarn : kError;
+    switch (shownMode) {
+        case LinkMode::Ir:
+            line.text = str::kInfrared;
+            break;
+        case LinkMode::Ble:
+            line.text = ble_.isConnected() ? str::kBleConnected : str::kBleWaiting;
+            line.dotColour = ble_.isConnected() ? kOk : kWarn;
+            break;
+        case LinkMode::Usb:
+            line.text = usb_.isMounted() ? str::kBleConnected : str::kUsbNotConnected;
+            line.dotColour = usb_.isMounted() ? kOk : kWarn;
+            break;
+        case LinkMode::Auto:
+        case LinkMode::Lan:
+        default:
+            if (webos_.isReady() || ipControl_.isReady()) {
+                line.text = tvLabel;
+            } else {
+                line.text = webOsStatusText(webos_.status());
+                if (settings_.linkMode == LinkMode::Auto) {
+                    line.text += str::kViaIrSuffix;
                 }
-                break;
-        }
+                line.dotColour = webos_.state() == LinkState::Connecting ? kWarn : kError;
+            }
+            break;
     }
-
-    const int dotX = 2 + chipWidth + 8;
-    canvas_.fillCircle(dotX, kStatusBarHeight / 2, 3, dotColour);
-    canvas_.setTextDatum(middle_left);
-    canvas_.setTextColor(kText);
-    painter::drawClippedText(canvas_, description, dotX + 7, kStatusBarHeight / 2,
-                             kScreenWidth - kBatteryWidth - (dotX + 7));
-
-    // Battery.
-    const int battery = device_.batteryPercent();
-    painter::drawBattery(canvas_, kScreenWidth - 4, kStatusBarHeight / 2, battery, device_.isCharging());
-}
-
-void App::drawFooter(const char* text) {
-    using namespace theme;
-    const int top = kScreenHeight - kFooterHeight;
-    canvas_.fillRect(0, top, kScreenWidth, kFooterHeight, kSurface);
-    if (text == nullptr) {
-        return;
-    }
-    canvas_.setFont(&fonts::Font0);
-    canvas_.setTextSize(1);
-    canvas_.setTextColor(kTextMuted);
-    canvas_.setTextDatum(middle_center);
-    canvas_.drawString(text, kScreenWidth / 2, top + kFooterHeight / 2);
-}
-
-void App::drawToast() {
-    using namespace theme;
-    if (toastUntil_ == 0) {
-        return;
-    }
-    canvas_.setFont(&fonts::Font2);
-    canvas_.setTextSize(1);
-    const int maxTextWidth = kScreenWidth - 24;
-    std::vector<String> lines = painter::wrapText(canvas_, toastText_, maxTextWidth);
-    if (lines.size() > 2) {
-        lines.resize(2);
-    }
-    int textWidth = 0;
-    for (const String& line : lines) {
-        textWidth = max<int>(textWidth, canvas_.textWidth(line));
-    }
-    const int lineHeight = 15;
-    const int width = min<int>(textWidth + 16, kScreenWidth - 8);
-    const int height = static_cast<int>(lines.size()) * lineHeight + 8;
-    const int x = (kScreenWidth - width) / 2;
-    const int y = kScreenHeight - kFooterHeight - height - 4;
-    canvas_.fillRoundRect(x, y, width, height, 6, kSurfaceHigh);
-    canvas_.drawRoundRect(x, y, width, height, 6, kAccent);
-    canvas_.setTextColor(kText);
-    canvas_.setTextDatum(top_center);
-    for (size_t i = 0; i < lines.size(); ++i) {
-        painter::drawClippedText(canvas_, lines[i], kScreenWidth / 2, y + 4 + i * lineHeight, maxTextWidth);
-    }
+    return line;
 }
 
 }  // namespace lgremote

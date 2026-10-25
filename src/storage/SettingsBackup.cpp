@@ -6,16 +6,14 @@
 #include <SD.h>
 #include <SPI.h>
 
+#include "ip9/hw/Pins.h"
+
 #include "app/Settings.h"
 
 namespace lgremote {
 
 namespace {
 
-constexpr int8_t kSdSck = 40;
-constexpr int8_t kSdMiso = 39;
-constexpr int8_t kSdMosi = 14;
-constexpr int8_t kSdCs = 12;
 constexpr uint32_t kSdFrequency = 25000000;
 constexpr const char* kTempPath = "/config/lgtv-remote/settings.json.tmp";
 constexpr const char* kSharedConfigDirectory = "/config";
@@ -29,8 +27,8 @@ bool SettingsBackup::mount() {
         return true;
     }
     lastMountAttemptAt_ = millis();
-    SPI.begin(kSdSck, kSdMiso, kSdMosi, kSdCs);
-    mounted_ = SD.begin(kSdCs, SPI, kSdFrequency);
+    SPI.begin(ip9::pins::kSdSck, ip9::pins::kSdMiso, ip9::pins::kSdMosi, ip9::pins::kSdCs);
+    mounted_ = SD.begin(ip9::pins::kSdCs, SPI, kSdFrequency);
     if (!mounted_) {
         SD.end();
     }

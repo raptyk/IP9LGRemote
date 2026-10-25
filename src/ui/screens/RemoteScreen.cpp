@@ -6,7 +6,7 @@
 #include "app/Menus.h"
 #include "ui/Icons.h"
 #include "ui/ModeStyle.h"
-#include "ui/Painter.h"
+#include "ui/Screen.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
 #include "ui/screens/HelpScreen.h"

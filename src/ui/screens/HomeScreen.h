@@ -10,25 +10,28 @@ namespace lgremote {
 // Start screen: a carousel of large icons (Wi-Fi remote, IR remote, Bluetooth, USB,
 // Settings, Help). Each card explains itself and shows whether it is set up.
 // Opening a mode that is not configured yet starts its setup checklist first.
-class HomeScreen : public Screen {
+class HomeScreen : public ip9::AppScreen<App, ip9::CarouselScreen> {
 public:
     explicit HomeScreen(App& app);
 
     void onEnter() override;
-    void onKey(const KeyEvent& event) override;
-    void draw(M5Canvas& canvas, int top, int height) override;
     const char* footer() const override;
-    bool showsLinkStatus() const override { return false; }
+    // Own chip: the home screen is not tied to a link, so the status bar shows the app instead.
+    const char* chipLabel() const override { return str::kChipHome; }
+
+protected:
+    CarouselCard card(int index) const override;
+    void drawIcon(M5Canvas& canvas, int index, int cx, int cy, uint16_t colour, float scale,
+                  uint16_t background) const override;
+    void open(int index) override;
+    void openHelp() override;
+    // "s" opens the setup checklist of the selected mode even when it is set up.
+    bool onExtraKey(const KeyEvent& event) override;
+    // Red double blink whenever a card that still needs setup is shown.
+    void onCardShown(int index) override;
 
 private:
-    void open(bool forceSetup);
-    void move(int delta);
-    // Red double blink whenever a card that still needs setup is shown.
-    void warnIfSetupNeeded();
-
-    int selected_ = 0;
-    int slideDirection_ = 0;  // -1 / +1 during the short slide animation
-    uint32_t slideStartedAt_ = 0;
+    void openCard(int index, bool forceSetup);
 };
 
 // Opens the remote for `mode`, running its setup checklist first if needed.

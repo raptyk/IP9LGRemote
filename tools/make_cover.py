@@ -115,12 +115,13 @@ def wide_cover():
     draw = ImageDraw.Draw(image)
     draw.rectangle([0, 0, 1280, 10], fill=ACCENT)
 
-    draw.text((70, 160), "LG TV Remote", font=font(78, True), fill=TEXT)
+    draw.text((74, 110), "cardputer.ip9.pl", font=font(26, True), fill=ACCENT)
+    draw.text((70, 160), "IP9 LG Remote", font=font(74, True), fill=TEXT)
     draw.text((74, 258), "for M5Stack Cardputer & ADV", font=font(32), fill=MUTED)
     draw_mode_chips(draw, 74, 330, 28)
     draw.text((74, 430), "Pointer · Typing · Air mouse · Apps", font=font(28), fill=TEXT)
     draw.text((74, 478), "webOS Wi-Fi pairing, IR for every LG TV", font=font(24), fill=MUTED)
-    draw.text((74, 640), "Open source · MIT · Patryk Strzelecki", font=font(22), fill=MUTED)
+    draw.text((74, 640), "Open source · MIT · Patryk Strzelecki · cardputer.ip9.pl", font=font(22), fill=MUTED)
 
     draw_screen_mockup(image, 690, 200, 2.2)
     image.save(OUT / "cover.png", optimize=True)
@@ -130,7 +131,7 @@ def square_cover():
     image = vertical_gradient((800, 800), (16, 20, 40), (6, 6, 10))
     draw = ImageDraw.Draw(image)
     draw.rectangle([0, 0, 800, 10], fill=ACCENT)
-    draw.text((400, 95), "LG TV Remote", font=font(80, True), fill=TEXT, anchor="mm")
+    draw.text((400, 95), "IP9 LG Remote", font=font(76, True), fill=TEXT, anchor="mm")
     draw.text((400, 165), "for M5Stack Cardputer & ADV", font=font(32), fill=MUTED, anchor="mm")
     size = draw_screen_mockup(Image.new("RGB", (1, 1)), 0, 0, 2.6)  # measure the framed mock-up
     draw_screen_mockup(image, (800 - size[0]) // 2, 230, 2.6)
@@ -138,7 +139,8 @@ def square_cover():
     f_size = 28
     total = sum(draw.textlength(n, font=font(f_size, True)) + f_size * 1.2 for n, _ in MODES) + f_size * 0.6 * 3
     draw_mode_chips(draw, (800 - total) / 2, 640, f_size)
-    draw.text((400, 750), "Pointer · Typing · Air mouse · Apps", font=font(26), fill=TEXT, anchor="mm")
+    draw.text((400, 740), "Pointer · Typing · Air mouse · Apps", font=font(26), fill=TEXT, anchor="mm")
+    draw.text((400, 778), "cardputer.ip9.pl", font=font(20, True), fill=ACCENT, anchor="mm")
     image.save(OUT / "cover-square.png", optimize=True)
 
 

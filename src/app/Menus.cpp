@@ -5,7 +5,7 @@
 #include "app/App.h"
 #include "ble/HidReportMap.h"
 #include "ui/Strings.h"
-#include "ui/screens/ListScreen.h"
+#include "ui/Screen.h"
 #include "ui/screens/MessageScreens.h"
 #include "ui/screens/RemoteScreen.h"
 #include "ui/screens/TextFieldScreen.h"
@@ -53,9 +53,9 @@ size_t brightnessIndex(uint8_t brightness) {
     return best;
 }
 
-std::unique_ptr<Screen> makeTvMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeTvMenu(App& app) {
     auto menu = std::make_unique<ListScreen>(app, str::kTvTitle);
-    Screen* self = menu.get();
+    ip9::Screen* self = menu.get();
     std::vector<ListItem> items;
     items.push_back({str::kTvSearch, nullptr,
                      [&app, self]() {
@@ -145,7 +145,7 @@ std::unique_ptr<Screen> makeTvMenu(App& app) {
     return menu;
 }
 
-std::unique_ptr<Screen> makeBleKeyTestMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeBleKeyTestMenu(App& app) {
     // webOS support for individual HID usages differs between models; this lets the user
     // find out which "Back"/"Home" variant their TV understands.
     struct Probe {
@@ -184,7 +184,7 @@ std::unique_ptr<Screen> makeBleKeyTestMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kBleKeyTest, std::move(items));
 }
 
-std::unique_ptr<Screen> makeBleMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeBleMenu(App& app) {
     std::vector<ListItem> items;
     items.push_back({str::kBlePair, nullptr, [&app]() { app.push(std::make_unique<BlePairingScreen>(app)); }, nullptr,
                      str::kBlePairText});
@@ -204,7 +204,7 @@ std::unique_ptr<Screen> makeBleMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kCardBleTitle, std::move(items));
 }
 
-std::unique_ptr<Screen> makeServiceMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeServiceMenu(App& app) {
     struct ServiceCode {
         const char* label;
         const char* description;
@@ -244,7 +244,7 @@ std::unique_ptr<Screen> makeServiceMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kServiceTitle, std::move(items));
 }
 
-std::unique_ptr<Screen> makeBackupMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeBackupMenu(App& app) {
     std::vector<ListItem> items;
     items.push_back({str::kBackupAuto, [&app]() { return onOff(app.settings().sdBackup); }, nullptr,
                      [&app](int) {
@@ -301,7 +301,7 @@ std::unique_ptr<Screen> makeBackupMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kBackupTitle, std::move(items));
 }
 
-std::unique_ptr<Screen> makeAboutMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeAboutMenu(App& app) {
     std::vector<ListItem> items;
     items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); },
                      [&app]() {
@@ -310,6 +310,8 @@ std::unique_ptr<Screen> makeAboutMenu(App& app) {
                      },
                      nullptr, str::kAboutAuthorText});
     items.push_back({str::kAboutVersion, []() { return String(APP_VERSION); }, nullptr, nullptr, String()});
+    items.push_back({str::kAboutWebsite, []() { return String(ip9::kBrandUrl); }, nullptr, nullptr,
+                     str::kAboutWebsiteText});
     items.push_back({str::kAboutDevice, [&app]() { return String(app.device().modelName()); }, nullptr, nullptr,
                      String()});
     items.push_back({str::kAboutImu, [&app]() { return onOff(app.device().hasImu()); }, nullptr, nullptr, String()});
@@ -322,7 +324,7 @@ std::unique_ptr<Screen> makeAboutMenu(App& app) {
 
 }  // namespace
 
-void selectTv(App& app, const String& host, const String& name, Screen* returnTo) {
+void selectTv(App& app, const String& host, const String& name, ip9::Screen* returnTo) {
     Settings& settings = app.settings();
     if (settings.tvHost != host) {
         settings.tvClientKey = "";  // a different TV needs its own pairing
@@ -335,7 +337,7 @@ void selectTv(App& app, const String& host, const String& name, Screen* returnTo
     app.push(std::make_unique<TvPairingScreen>(app, returnTo));
 }
 
-void promptTvAddress(App& app, Screen* returnTo) {
+void promptTvAddress(App& app, ip9::Screen* returnTo) {
     app.push(std::make_unique<TextFieldScreen>(
         app, str::kTvIpPrompt, app.settings().tvHost,
         [&app, returnTo](const String& text) {
@@ -351,7 +353,7 @@ void promptTvAddress(App& app, Screen* returnTo) {
         false, 15, str::kTvIpHint));
 }
 
-std::unique_ptr<Screen> makeMainMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeMainMenu(App& app) {
     std::vector<ListItem> items;
     items.push_back(
         {str::kMenuAbout, nullptr, [&app]() { app.push(makeAboutMenu(app)); }, nullptr, str::kMenuAboutText});
@@ -442,7 +444,7 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kMenuTitle, std::move(items));
 }
 
-std::unique_ptr<Screen> makeAppsMenu(App& app) {
+std::unique_ptr<ip9::Screen> makeAppsMenu(App& app) {
     std::vector<ListItem> items;
     for (const AppShortcut& shortcut : kApps) {
         const bool hasIr = shortcut.irCommand != 0;

@@ -4,7 +4,7 @@
 
 #include "app/App.h"
 #include "app/Menus.h"
-#include "ui/Painter.h"
+#include "ui/Screen.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
 #include "ui/screens/TextFieldScreen.h"
@@ -18,84 +18,9 @@ constexpr uint32_t kAutoScanDelayMs = 1500;
 constexpr uint32_t kBleConnectedCloseDelayMs = 1500;
 }  // namespace
 
-// ---------------------------------------------------------------- ConfirmScreen
-
-ConfirmScreen::ConfirmScreen(App& app, String question, String detail, std::function<void()> onConfirm,
-                             std::function<void()> onCancel)
-    : Screen(app),
-      question_(std::move(question)),
-      detail_(std::move(detail)),
-      onConfirm_(std::move(onConfirm)),
-      onCancel_(std::move(onCancel)) {}
-
-void ConfirmScreen::onKey(const KeyEvent& event) {
-    if (event.repeat) {
-        return;
-    }
-    std::function<void()> action;
-    if (event.code == keycode::kEnter || event.code == 'y') {
-        action = onConfirm_;
-    } else if (event.code == keycode::kEsc || event.code == keycode::kBackspace || event.code == 'n') {
-        action = onCancel_;
-    } else {
-        return;
-    }
-    app_.pop();
-    if (action) {
-        action();
-    }
-}
-
-const char* ConfirmScreen::footer() const {
-    return str::kConfirmFooter;
-}
-
-void ConfirmScreen::draw(M5Canvas& canvas, int top, int height) {
-    painter::drawCenteredLines(canvas, top, height, question_.c_str(), detail_.isEmpty() ? nullptr : detail_.c_str());
-}
-
-// ---------------------------------------------------------------- InfoScreen
-
-InfoScreen::InfoScreen(App& app, String title, String body, String detail, uint32_t autoCloseMs)
-    : Screen(app),
-      title_(std::move(title)),
-      body_(std::move(body)),
-      detail_(std::move(detail)),
-      autoCloseMs_(autoCloseMs) {}
-
-void InfoScreen::onEnter() {
-    shownAt_ = millis();
-}
-
-void InfoScreen::tick() {
-    if (autoCloseMs_ > 0 && millis() - shownAt_ > autoCloseMs_) {
-        app_.pop();
-    }
-}
-
-void InfoScreen::onKey(const KeyEvent& event) {
-    if (!event.repeat && (event.code == keycode::kEnter || event.code == keycode::kEsc ||
-                          event.code == keycode::kBackspace || event.code == keycode::kTab)) {
-        app_.pop();
-    }
-}
-
-const char* InfoScreen::footer() const {
-    return str::kFooterInfo;
-}
-
-void InfoScreen::draw(M5Canvas& canvas, int top, int height) {
-    using namespace theme;
-    const int margin = 8;
-    canvas.fillRoundRect(margin, top + 6, kScreenWidth - 2 * margin, height - 12, 8, kSurface);
-    canvas.drawRoundRect(margin, top + 6, kScreenWidth - 2 * margin, height - 12, 8, kAccent);
-    painter::drawCenteredLines(canvas, top + 6, height - 12, title_.c_str(), body_.c_str(),
-                               detail_.isEmpty() ? nullptr : detail_.c_str());
-}
-
 // ---------------------------------------------------------------- TvPairingScreen
 
-TvPairingScreen::TvPairingScreen(App& app, Screen* returnTo) : Screen(app), returnTo_(returnTo) {}
+TvPairingScreen::TvPairingScreen(App& app, ip9::Screen* returnTo) : Screen(app), returnTo_(returnTo) {}
 
 void TvPairingScreen::onEnter() {
     readySince_ = 0;
@@ -382,7 +307,7 @@ void WifiScanScreen::drawEmpty(M5Canvas& canvas, int top, int height) {
 
 // ---------------------------------------------------------------- TvSearchScreen
 
-TvSearchScreen::TvSearchScreen(App& app, Screen* returnTo) : ListScreen(app, str::kTvSearch), returnTo_(returnTo) {}
+TvSearchScreen::TvSearchScreen(App& app, ip9::Screen* returnTo) : ListScreen(app, str::kTvSearch), returnTo_(returnTo) {}
 
 void TvSearchScreen::onEnter() {
     if (!started_) {
@@ -410,7 +335,7 @@ void TvSearchScreen::tick() {
 void TvSearchScreen::rebuild() {
     std::vector<ListItem> items;
     App& app = app_;
-    Screen* returnTo = returnTo_;
+    ip9::Screen* returnTo = returnTo_;
     for (const DiscoveredTv& tv : app.discovery().results()) {
         const DiscoveredTv copy = tv;
         items.push_back({tv.name, [copy]() { return copy.host; },

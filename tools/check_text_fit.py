@@ -53,8 +53,14 @@ FONT_TABLES = {
     "Font2": load_font2(),
 }
 
-strings = dict(re.findall(r'constexpr const char\* (k\w+) = "([^"]*)";',
-                          (ROOT / "src/ui/Strings.h").read_text(encoding="utf-8")))
+STRING_PATTERN = r'constexpr const char\* (k\w+) = "([^"]*)";'
+strings = dict(re.findall(STRING_PATTERN, (ROOT / "src/ui/Strings.h").read_text(encoding="utf-8")))
+# Footers of the shared screens live in IP9Kit: the checkout next to the app, or the downloaded copy.
+for kit in (ROOT.parent / "IP9Kit", ROOT / ".pio/libdeps/cardputer/IP9Kit"):
+    kit_strings = kit / "src/ip9/ui/Strings.h"
+    if kit_strings.is_file():
+        strings.update(re.findall(STRING_PATTERN, kit_strings.read_text(encoding="utf-8")))
+        break
 
 # (name pattern, font, max width, max lines)
 RULES = [

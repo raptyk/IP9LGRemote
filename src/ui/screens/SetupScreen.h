@@ -3,7 +3,7 @@
 #pragma once
 
 #include "app/Settings.h"
-#include "ui/screens/ListScreen.h"
+#include "ui/Screen.h"
 
 namespace lgremote {
 

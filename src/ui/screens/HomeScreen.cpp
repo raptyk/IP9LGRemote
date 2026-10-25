@@ -6,7 +6,6 @@
 #include "app/Menus.h"
 #include "ui/Icons.h"
 #include "ui/ModeStyle.h"
-#include "ui/Painter.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
 #include "ui/screens/HelpScreen.h"
@@ -36,7 +35,6 @@ constexpr Card kCards[] = {
     {icons::Icon::Help, str::kCardHelpTitle, str::kCardHelpText, CardKind::Help, LinkMode::Auto},
 };
 constexpr int kCardCount = sizeof(kCards) / sizeof(kCards[0]);
-constexpr uint32_t kSlideMs = 140;
 
 }  // namespace
 
@@ -49,79 +47,48 @@ void openLinkMode(App& app, LinkMode mode, bool forceSetup) {
     }
 }
 
-HomeScreen::HomeScreen(App& app) : Screen(app) {}
+HomeScreen::HomeScreen(App& app) : AppScreen(app, kCardCount) {}
 
 void HomeScreen::onEnter() {
     // Start on the card of the last used mode.
     const LinkMode last = app_.settings().linkMode == LinkMode::Lan ? LinkMode::Auto : app_.settings().linkMode;
     for (int i = 0; i < kCardCount; ++i) {
         if (kCards[i].kind == CardKind::Mode && kCards[i].mode == last) {
-            selected_ = i;
+            setSelected(i);
             break;
         }
     }
-    warnIfSetupNeeded();
+    onCardShown(selected());
 }
 
-void HomeScreen::move(int delta) {
-    selected_ = (selected_ + delta + kCardCount) % kCardCount;
-    slideDirection_ = delta;
-    slideStartedAt_ = millis();
-    warnIfSetupNeeded();
-    app_.invalidate();
-}
-
-void HomeScreen::warnIfSetupNeeded() {
+void HomeScreen::onCardShown(int index) {
     // Every time such a card comes into view: one short red double blink, never a loop.
-    const Card& card = kCards[selected_];
+    const Card& card = kCards[index];
     if (card.kind == CardKind::Mode && !app_.settings().isSetUp(card.mode)) {
         app_.signalWarning();
     }
 }
 
-void HomeScreen::onKey(const KeyEvent& event) {
-    switch (event.code) {
-        case keycode::kLeft:
-        case keycode::kUp:
-            move(-1);
-            return;
-        case keycode::kRight:
-            if (event.shift) {
-                app_.push(std::make_unique<HelpScreen>(app_));  // "?"
-                return;
-            }
-            move(1);
-            return;
-        case keycode::kDown:
-            move(1);
-            return;
-        case keycode::kTab:
-            if (!event.repeat) {
-                app_.push(std::make_unique<HelpScreen>(app_));
-            }
-            return;
-        case keycode::kEnter:
-        case keycode::kButtonG0:
-            if (!event.repeat) {
-                open(false);
-            }
-            return;
-        case 's':
-            if (!event.repeat) {
-                open(true);
-            }
-            return;
-        default:
-            if (!event.repeat && event.code >= '1' && event.code < '1' + kCardCount) {
-                selected_ = event.code - '1';
-                open(false);
-            }
-            return;
+bool HomeScreen::onExtraKey(const KeyEvent& event) {
+    if (event.code != 's') {
+        return false;
     }
+    if (!event.repeat) {
+        openCard(selected(), true);
+    }
+    return true;
 }
 
-void HomeScreen::open(bool forceSetup) {
-    const Card& card = kCards[selected_];
+void HomeScreen::open(int index) {
+    openCard(index, false);
+}
+
+void HomeScreen::openHelp() {
+    app_.push(std::make_unique<HelpScreen>(app_));
+}
+
+void HomeScreen::openCard(int index, bool forceSetup) {
+    const Card& card = kCards[index];
     switch (card.kind) {
         case CardKind::Mode:
             openLinkMode(app_, card.mode, forceSetup);
@@ -130,7 +97,7 @@ void HomeScreen::open(bool forceSetup) {
             app_.push(makeMainMenu(app_));
             break;
         case CardKind::Help:
-            app_.push(std::make_unique<HelpScreen>(app_));
+            openHelp();
             break;
     }
 }
@@ -139,64 +106,29 @@ const char* HomeScreen::footer() const {
     return str::kFooterHome;
 }
 
-void HomeScreen::draw(M5Canvas& canvas, int top, int height) {
+void HomeScreen::drawIcon(M5Canvas& canvas, int index, int cx, int cy, uint16_t colour, float scale,
+                          uint16_t background) const {
+    icons::draw(canvas, kCards[index].icon, cx, cy, colour, scale, background);
+}
+
+CarouselCard HomeScreen::card(int index) const {
     using namespace theme;
-    const Card& card = kCards[selected_];
-    const int centerX = kScreenWidth / 2;
-
-    // Short slide-in of the selected icon.
-    int offset = 0;
-    const uint32_t age = millis() - slideStartedAt_;
-    if (slideDirection_ != 0 && age < kSlideMs) {
-        offset = slideDirection_ * static_cast<int>(30 * (kSlideMs - age) / kSlideMs);
-        app_.invalidate();
-    }
-
-    // Neighbour previews and chevrons hint that the list scrolls sideways.
-    const int iconY = top + 24;
-    const Card& previous = kCards[(selected_ + kCardCount - 1) % kCardCount];
-    const Card& next = kCards[(selected_ + 1) % kCardCount];
-    icons::draw(canvas, previous.icon, 34, iconY, kSurfaceHigh, 0.55f);
-    icons::draw(canvas, next.icon, kScreenWidth - 34, iconY, kSurfaceHigh, 0.55f);
-    canvas.fillTriangle(6, iconY, 12, iconY - 6, 12, iconY + 6, kTextMuted);
-    canvas.fillTriangle(kScreenWidth - 6, iconY, kScreenWidth - 12, iconY - 6, kScreenWidth - 12, iconY + 6,
-                        kTextMuted);
-
+    const Card& card = kCards[index];
     // Mode cards use the same colour as the status bar chip of that mode.
-    const uint16_t cardColour = card.kind == CardKind::Mode ? ui::modeColour(card.mode) : kSurface;
-    canvas.fillRoundRect(centerX - 26 + offset, iconY - 22, 52, 44, 10, cardColour);
-    icons::draw(canvas, card.icon, centerX + offset, iconY, kText, 1.0f);
-
-    canvas.setTextSize(1);
-    canvas.setFont(&fonts::FreeSansBold9pt7b);
-    canvas.setTextColor(kText);
-    canvas.setTextDatum(top_center);
-    painter::drawClippedText(canvas, card.title, centerX, top + 49, kScreenWidth - 2 * kPadding);
-
-    // Status line: is this mode ready or does it need setup?
-    canvas.setFont(&fonts::Font0);
-    int textTop = top + 66;
+    CarouselCard result{card.title, card.text, card.kind == CardKind::Mode ? ui::modeColour(card.mode) : kSurface,
+                        String(), kTextMuted};
     if (card.kind == CardKind::Mode) {
-        const bool ready = app_.settings().isSetUp(card.mode);
-        String status = ready ? String(str::kReady) : String(str::kSetupNeeded);
+        // Status line: is this mode ready or does it need setup?
+        const Settings& settings = app_.settings();
+        const bool ready = settings.isSetUp(card.mode);
+        result.status = ready ? String(str::kReady) : String(str::kSetupNeeded);
         if (ready && card.mode == LinkMode::Auto) {
-            const Settings& settings = app_.settings();
-            status += ": ";
-            status += settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
+            result.status += ": ";
+            result.status += settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
         }
-        const uint16_t colour = ready ? kOk : kWarn;
-        const int width = min<int>(canvas.textWidth(status), kScreenWidth - 40);
-        const int x = centerX - width / 2;
-        canvas.fillCircle(x - 7, textTop + 3, 3, colour);
-        canvas.setTextColor(colour);
-        canvas.setTextDatum(top_left);
-        painter::drawClippedText(canvas, status, x, textTop, kScreenWidth - 40);
-        textTop += 12;
+        result.statusColour = ready ? kOk : kWarn;
     }
-    canvas.setTextColor(kTextMuted);
-    canvas.setTextDatum(top_center);
-    const int lines = (top + height - textTop) / 10;
-    painter::drawWrappedText(canvas, card.text, centerX, textTop, kScreenWidth - 2 * kPadding - 8, 10, lines);
+    return result;
 }
 
 }  // namespace lgremote

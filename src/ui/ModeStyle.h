@@ -29,10 +29,8 @@ inline uint16_t modeTint(LinkMode mode) {
     }
 }
 
-// Status LED colours (0xRRGGBB), the LED counterpart of modeColour().
-constexpr uint32_t kLedSuccess = 0x00FF30;
-constexpr uint32_t kLedError = 0xFF0000;
-
+// Status LED colour (0xRRGGBB) of a mode, the LED counterpart of modeColour().
+// Success / error blinks use ip9::led.
 inline uint32_t modeLedColour(LinkMode mode) {
     switch (mode) {
         case LinkMode::Ir: return 0xFF5010;

@@ -2,18 +2,10 @@
 // Copyright (c) 2026 Patryk Strzelecki <patryk@strzelecki.info>
 #pragma once
 
-#include <M5GFX.h>
-
-#include <memory>
-#include <vector>
-
 #include "app/Settings.h"
 #include "ble/BleHidTransport.h"
 #include "core/CommandRouter.h"
 #include "hw/AirMouse.h"
-#include "hw/Device.h"
-#include "hw/KeyboardInput.h"
-#include "hw/StatusLed.h"
 #include "ipcontrol/IpControlClient.h"
 #include "ir/IrTransport.h"
 #include "net/WifiService.h"
@@ -25,28 +17,13 @@
 
 namespace lgremote {
 
-// Owns all services and the screen stack; drives the main loop.
-class App {
+// Owns all services and drives the main loop on top of the shared IP9Kit shell
+// (screen stack, status bar, toasts, dimming, status LED).
+class App : public ip9::Shell {
 public:
     App();
 
     void begin();
-    void loop();
-
-    // Screen stack.
-    void push(std::unique_ptr<Screen> screen);
-    void pop();
-    void popToRoot();
-    // Pops screens until `target` is on top (only the top screen if `target` is not on the stack).
-    void popTo(Screen* target);
-    void invalidate() { dirty_ = true; }
-
-    // Short message shown above the footer for ~1.8 s.
-    void toast(const String& message);
-    // A toast for something the user has to fix or do first, plus one red double blink.
-    void warn(const String& message);
-    // The red double blink alone (setup needed, pairing failed, nothing found).
-    void signalWarning();
 
     // Feedback for a sent key (shown on the remote screen).
     void keyClick();
@@ -66,7 +43,6 @@ public:
     // Makes `mode` the active link and remembers it.
     void selectMode(LinkMode mode);
 
-    Device& device() { return device_; }
     CommandRouter& router() { return router_; }
     IrTransport& ir() { return ir_; }
     WebOsClient& webos() { return webos_; }
@@ -76,26 +52,21 @@ public:
     WifiService& wifi() { return wifi_; }
     TvDiscovery& discovery() { return discovery_; }
     AirMouse& airMouse() { return airMouse_; }
-    StatusLed& statusLed() { return statusLed_; }
-    KeyboardInput& keyboard() { return keyboard_; }
+
+protected:
+    ip9::StatusLine statusLine(const ip9::Screen& top) override;
+    // Wi-Fi, webOS, Bluetooth: pairing keys, learned MAC, completed setups.
+    void onLoop() override;
+    void updateStatusLed() override;
+    bool keepAwake() const override;
 
 private:
     // Loads NVS; returns true when the settings were restored from the SD card instead.
     bool loadSettings();
-    void handleInput();
-    void syncServices();
-    void updatePower();
-    void updateStatusLed();
     LinkMode displayedMode() const;
-    void render();
-    void drawStatusBar();
-    void drawFooter(const char* text);
-    void drawToast();
 
     Settings settings_;
     SettingsBackup backup_;
-    Device device_;
-    KeyboardInput keyboard_;
     IrTransport ir_;
     WebOsClient webos_;
     IpControlClient ipControl_;
@@ -104,18 +75,7 @@ private:
     WifiService wifi_;
     TvDiscovery discovery_;
     AirMouse airMouse_;
-    StatusLed statusLed_;
     CommandRouter router_;
-
-    M5Canvas canvas_;
-    std::vector<std::unique_ptr<Screen>> screens_;
-    std::vector<std::unique_ptr<Screen>> retired_;  // popped screens, freed after the current event
-    bool dirty_ = true;
-    uint32_t lastRenderAt_ = 0;
-    uint32_t lastStatusRefreshAt_ = 0;
-
-    String toastText_;
-    uint32_t toastUntil_ = 0;
 
     bool textFieldHintShown_ = false;
 
@@ -123,11 +83,6 @@ private:
     bool pointerActive_ = false;
     LinkMode ledMode_ = LinkMode::Count;
     bool ledLinkReady_ = false;
-    uint32_t lastBatteryBlinkAt_ = 0;
-
-    uint32_t lastInputAt_ = 0;
-    bool screenDimmed_ = false;
-    bool screenOff_ = false;
 };
 
 }  // namespace lgremote

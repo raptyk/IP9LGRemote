@@ -7,11 +7,12 @@
 // long texts are word-wrapped by the painter.
 namespace lgremote::str {
 
-constexpr const char* kAppName = "LG Remote";
+constexpr const char* kAppName = "IP9 LG Remote";
 constexpr const char* kBleDeviceName = "Cardputer Remote";
 
 // Home launcher
 constexpr const char* kHomeStatus = "Choose a mode";
+constexpr const char* kChipHome = "LG";
 constexpr const char* kFooterHome = "<> pick  enter open  s setup  tab help";
 constexpr const char* kCardWifiTitle = "Wi-Fi remote";
 constexpr const char* kCardWifiText = "Pointer, typing and apps over your home network. Falls back to IR.";
@@ -166,8 +167,6 @@ constexpr const char* kMenuAboutText = "Version, device, network address, memory
 constexpr const char* kOn = "On";
 constexpr const char* kOff = "Off";
 constexpr const char* kNotSet = "Not set";
-constexpr const char* kFooterList = "enter select  del back";
-constexpr const char* kFooterValue = "< > change  del back";
 
 // Wi-Fi
 constexpr const char* kWifiTitle = "Wi-Fi network";
@@ -266,11 +265,9 @@ constexpr const char* kServiceTitle = "Service codes (IR)";
 constexpr const char* kServiceWarning = "Password: 0413 (else 0000). Wrong changes can break the TV!";
 constexpr const char* kServiceKeypadTitle = "Service menu (IR)";
 constexpr const char* kServiceKeypadText = "Password usually 0413 (else 0000). Digits, arrows and enter go over IR.";
-constexpr const char* kConfirmFooter = "enter yes  esc no";
 
 // Help
 constexpr const char* kHelpTitle = "Keys";
-constexpr const char* kHelpFooter = "< > page  esc close";
 
 // About
 constexpr const char* kAboutTitle = "About";
@@ -283,8 +280,9 @@ constexpr const char* kAboutAuthor = "Author";
 constexpr const char* kAboutAuthorText = "Who made this remote. Enter shows the details.";
 constexpr const char* kAuthor = "Patryk Strzelecki";
 constexpr const char* kAuthorEmail = "patryk@strzelecki.info";
-constexpr const char* kAuthorDetail = "CardputerLGRemote, MIT license";
-constexpr const char* kFooterInfo = "enter / esc close";
+constexpr const char* kAuthorDetail = "IP9 LG Remote, MIT license";
+constexpr const char* kAboutWebsite = "Website";
+constexpr const char* kAboutWebsiteText = "More IP9 apps for the Cardputer and updates.";
 
 // General
 constexpr const char* kSaved = "Saved";

@@ -2,37 +2,37 @@
 // Copyright (c) 2026 Patryk Strzelecki <patryk@strzelecki.info>
 #pragma once
 
-#include <M5GFX.h>
+#include <IP9Kit.h>
 
-#include "hw/KeyboardInput.h"
+#include "ui/Strings.h"
+#include "ui/Theme.h"
 
 namespace lgremote {
 
+// The shared IP9Kit core (https://github.com/raptyk/IP9Kit) is part of this app's vocabulary:
+// KeyEvent, keycode::, painter::, ConfirmScreen, InfoScreen, ListItem, ...
+using namespace ip9;
+
 class App;
 
-// A full-screen view. The App owns a stack of screens; only the top one is drawn
-// and receives key events. The status bar and footer are drawn by the App.
-class Screen {
+// Screen::traits() of this app.
+namespace trait {
+// The screen sends everything over infrared regardless of the selected mode (service keypad):
+// the status bar and the LED then show the IR mode.
+constexpr uint32_t kInfraredOnly = 1 << 0;
+}  // namespace trait
+
+// A full-screen view of this app; `app_` gives access to the App's services.
+// Screens without their own chipLabel() show the link mode and its state in the status bar.
+class Screen : public ip9::AppScreen<App> {
 public:
-    explicit Screen(App& app) : app_(app) {}
-    virtual ~Screen() = default;
+    using AppScreen::AppScreen;
+};
 
-    virtual void onEnter() {}
-    virtual void onKey(const KeyEvent& event) = 0;
-    // Called on every main loop iteration while the screen is on top.
-    virtual void tick() {}
-    // Draws the content area (between status bar and footer).
-    virtual void draw(M5Canvas& canvas, int top, int height) = 0;
-    virtual const char* footer() const { return nullptr; }
-    // False for screens that are not tied to a link (home launcher): the status bar
-    // then shows the app name instead of the link state.
-    virtual bool showsLinkStatus() const { return true; }
-    // True for screens that send everything over infrared regardless of the selected mode
-    // (service keypad): the status bar then shows the IR mode.
-    virtual bool forcesInfrared() const { return false; }
-
-protected:
-    App& app_;
+// A list (menus, setup checklists, scan results) with access to the App.
+class ListScreen : public ip9::AppScreen<App, ip9::ListScreen> {
+public:
+    using AppScreen::AppScreen;
 };
 
 }  // namespace lgremote

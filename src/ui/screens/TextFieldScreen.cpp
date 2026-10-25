@@ -3,7 +3,7 @@
 #include "TextFieldScreen.h"
 
 #include "app/App.h"
-#include "ui/Painter.h"
+#include "ui/Screen.h"
 #include "ui/Strings.h"
 #include "ui/Theme.h"
 
