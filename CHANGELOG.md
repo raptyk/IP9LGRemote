@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 – 2026-10-25
+
+- Settings backup on the SD card, so a re-install from M5Launcher (which may wipe NVS) keeps
+  the Wi-Fi and the TV pairing. One JSON file, `/config/lgtv-remote/settings.json`
+  (versioned schema, readable keys), written atomically (temporary file + rename) on every
+  settings change. At start-up an empty NVS is filled from the card automatically.
+- Settings > SD card backup: automatic copy on/off, save now, restore from card, delete from
+  card (removes the file and its empty folders and stops the copy).
+
 ## 1.4.3 – 2026-10-25
 
 - Warning blink every time a not-configured home card or a locked (greyed-out) row comes into

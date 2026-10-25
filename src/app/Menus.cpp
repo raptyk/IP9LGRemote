@@ -244,6 +244,63 @@ std::unique_ptr<Screen> makeServiceMenu(App& app) {
     return std::make_unique<ListScreen>(app, str::kServiceTitle, std::move(items));
 }
 
+std::unique_ptr<Screen> makeBackupMenu(App& app) {
+    std::vector<ListItem> items;
+    items.push_back({str::kBackupAuto, [&app]() { return onOff(app.settings().sdBackup); }, nullptr,
+                     [&app](int) {
+                         app.settings().sdBackup = !app.settings().sdBackup;
+                         app.saveSettings();  // also writes the copy when just switched on
+                     },
+                     str::kBackupAutoText});
+    items.push_back({str::kBackupSaveNow, nullptr,
+                     [&app]() {
+                         if (app.backup().save(app.settings())) {
+                             app.toast(str::kBackupSaved);
+                         } else {
+                             app.warn(str::kBackupNoCard);
+                         }
+                     },
+                     nullptr, str::kBackupSaveNowText});
+    items.push_back({str::kBackupRestore, nullptr,
+                     [&app]() {
+                         if (!app.backup().exists()) {
+                             app.warn(str::kBackupMissing);
+                             return;
+                         }
+                         app.push(std::make_unique<ConfirmScreen>(app, str::kBackupRestore, str::kBackupRestoreText,
+                                                                  [&app]() {
+                                                                      if (!app.backup().load(app.settings())) {
+                                                                          app.warn(str::kBackupMissing);
+                                                                          return;
+                                                                      }
+                                                                      app.saveSettings();
+                                                                      app.applyWifiSettings();
+                                                                      app.applyTvSettings();
+                                                                      app.applyDisplaySettings();
+                                                                      app.toast(str::kBackupRestored);
+                                                                  }));
+                     },
+                     nullptr, str::kBackupRestoreText});
+    items.push_back({str::kBackupDelete, nullptr,
+                     [&app]() {
+                         if (!app.backup().exists()) {
+                             app.warn(str::kBackupMissing);
+                             return;
+                         }
+                         app.push(std::make_unique<ConfirmScreen>(app, str::kBackupDelete, str::kBackupDeleteText,
+                                                                  [&app]() {
+                                                                      // Switch the automatic copy off too, or the
+                                                                      // next change would write it again.
+                                                                      app.settings().sdBackup = false;
+                                                                      app.saveSettings();
+                                                                      app.backup().remove();
+                                                                      app.toast(str::kBackupDeleted);
+                                                                  }));
+                     },
+                     nullptr, str::kBackupDeleteText});
+    return std::make_unique<ListScreen>(app, str::kBackupTitle, std::move(items));
+}
+
 std::unique_ptr<Screen> makeAboutMenu(App& app) {
     std::vector<ListItem> items;
     items.push_back({str::kAboutAuthor, []() { return String(str::kAuthor); },
@@ -374,6 +431,12 @@ std::unique_ptr<Screen> makeMainMenu(App& app) {
                          app.testStatusLed();
                      },
                      nullptr, str::kMenuTestLedText});
+    items.push_back({str::kMenuBackup,
+                     [&app]() -> String {
+                         if (!app.settings().sdBackup) return String(str::kOff);
+                         return String(app.backup().cardPresent() ? str::kOn : str::kBackupNoCardShort);
+                     },
+                     [&app]() { app.push(makeBackupMenu(app)); }, nullptr, str::kMenuBackupText});
     items.push_back({str::kMenuService, nullptr, [&app]() { app.push(makeServiceMenu(app)); }, nullptr,
                      str::kMenuServiceText});
     return std::make_unique<ListScreen>(app, str::kMenuTitle, std::move(items));

@@ -41,7 +41,7 @@ void App::begin() {
     M5.Display.setRotation(1);
 
     device_.begin();
-    settings_.load();
+    const bool restoredFromCard = loadSettings();
 
     canvas_.setColorDepth(16);
     if (!canvas_.createSprite(theme::kScreenWidth, theme::kScreenHeight)) {
@@ -72,6 +72,9 @@ void App::begin() {
     log_i("%s %s on %s, IMU: %s", str::kAppName, APP_VERSION, device_.modelName(), device_.hasImu() ? "yes" : "no");
 
     push(std::make_unique<HomeScreen>(*this));
+    if (restoredFromCard) {
+        toast(str::kBackupRestored);
+    }
     lastInputAt_ = millis();
 }
 
@@ -141,6 +144,28 @@ void App::popTo(Screen* target) {
     }
     screens_.back()->onEnter();
     dirty_ = true;
+}
+
+bool App::loadSettings() {
+    const bool inNvs = settings_.load();
+    // After a re-install NVS can be empty: bring the pairing back from the SD card copy.
+    if (!backup_.mount() || (inNvs && !settings_.isBlank())) {
+        return false;
+    }
+    Settings fromCard = settings_;
+    if (!backup_.load(fromCard) || fromCard.isBlank()) {
+        return false;
+    }
+    settings_ = fromCard;
+    settings_.save();
+    return true;
+}
+
+void App::saveSettings() {
+    settings_.save();
+    if (settings_.sdBackup) {
+        backup_.save(settings_);
+    }
 }
 
 void App::toast(const String& message) {

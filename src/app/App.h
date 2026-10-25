@@ -17,6 +17,7 @@
 #include "ipcontrol/IpControlClient.h"
 #include "ir/IrTransport.h"
 #include "net/WifiService.h"
+#include "storage/SettingsBackup.h"
 #include "ui/Screen.h"
 #include "usb/UsbHidTransport.h"
 #include "webos/TvDiscovery.h"
@@ -56,7 +57,9 @@ public:
     void testStatusLed();
 
     Settings& settings() { return settings_; }
-    void saveSettings() { settings_.save(); }
+    // Saves to NVS and, when enabled and a card is inserted, to the SD card backup.
+    void saveSettings();
+    SettingsBackup& backup() { return backup_; }
     void applyWifiSettings();
     void applyTvSettings();
     void applyDisplaySettings();
@@ -77,6 +80,8 @@ public:
     KeyboardInput& keyboard() { return keyboard_; }
 
 private:
+    // Loads NVS; returns true when the settings were restored from the SD card instead.
+    bool loadSettings();
     void handleInput();
     void syncServices();
     void updatePower();
@@ -88,6 +93,7 @@ private:
     void drawToast();
 
     Settings settings_;
+    SettingsBackup backup_;
     Device device_;
     KeyboardInput keyboard_;
     IrTransport ir_;

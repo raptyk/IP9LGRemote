@@ -7,8 +7,27 @@
 namespace lgremote {
 
 namespace {
+
 constexpr const char* kNamespace = "lgremote";
+
+// Link modes are stored by name in JSON (readable, independent of the enum order).
+constexpr const char* kModeKeys[] = {"wifi", "ir", "lan", "bluetooth", "usb"};
+
+const char* modeKey(LinkMode mode) {
+    const auto index = static_cast<size_t>(mode);
+    return index < sizeof(kModeKeys) / sizeof(kModeKeys[0]) ? kModeKeys[index] : kModeKeys[0];
 }
+
+LinkMode modeFromKey(const char* key, LinkMode fallback) {
+    for (size_t i = 0; i < sizeof(kModeKeys) / sizeof(kModeKeys[0]); ++i) {
+        if (strcmp(key, kModeKeys[i]) == 0) {
+            return static_cast<LinkMode>(i);
+        }
+    }
+    return fallback;
+}
+
+}  // namespace
 
 const char* linkModeName(LinkMode mode) {
     switch (mode) {
@@ -21,10 +40,10 @@ const char* linkModeName(LinkMode mode) {
     }
 }
 
-void Settings::load() {
+bool Settings::load() {
     Preferences prefs;
     if (!prefs.begin(kNamespace, true)) {
-        return;  // first boot, namespace does not exist yet
+        return false;  // first boot or re-install: the namespace does not exist yet
     }
     uint8_t mode = prefs.getUChar("link", static_cast<uint8_t>(LinkMode::Auto));
     linkMode = mode < static_cast<uint8_t>(LinkMode::Count) ? static_cast<LinkMode>(mode) : LinkMode::Auto;
@@ -45,7 +64,9 @@ void Settings::load() {
     offTimeoutSec = prefs.getUShort("off_s", offTimeoutSec);
     keyClick = prefs.getBool("click", keyClick);
     statusLed = prefs.getBool("led", statusLed);
+    sdBackup = prefs.getBool("sd_backup", sdBackup);
     prefs.end();
+    return true;
 }
 
 void Settings::save() const {
@@ -72,7 +93,81 @@ void Settings::save() const {
     prefs.putUShort("off_s", offTimeoutSec);
     prefs.putBool("click", keyClick);
     prefs.putBool("led", statusLed);
+    prefs.putBool("sd_backup", sdBackup);
     prefs.end();
+}
+
+void Settings::toJson(JsonObject root) const {
+    root["schemaVersion"] = kSchemaVersion;
+    root["app"] = "LGTVRemoteCardputer";
+    root["linkMode"] = modeKey(linkMode);
+
+    JsonObject wifi = root["wifi"].to<JsonObject>();
+    wifi["ssid"] = wifiSsid;
+    wifi["password"] = wifiPassword;
+
+    JsonObject tv = root["tv"].to<JsonObject>();
+    tv["host"] = tvHost;
+    tv["name"] = tvName;
+    tv["mac"] = tvMac;
+    tv["clientKey"] = tvClientKey;
+    tv["ipControlKeycode"] = tvKeycode;
+    tv["pairing"] = tvUsePin ? "pin" : "prompt";
+
+    JsonObject setup = root["setupDone"].to<JsonObject>();
+    setup["bluetooth"] = bleSetupDone;
+    setup["usb"] = usbSetupDone;
+
+    JsonObject pointer = root["pointer"].to<JsonObject>();
+    pointer["speed"] = pointerSpeed;
+    pointer["invertY"] = pointerInvertY;
+
+    JsonObject display = root["display"].to<JsonObject>();
+    display["brightness"] = brightness;
+    display["dimAfterSeconds"] = dimTimeoutSec;
+    display["offAfterSeconds"] = offTimeoutSec;
+
+    root["keyClick"] = keyClick;
+    root["statusLight"] = statusLed;
+    root["sdBackup"] = sdBackup;
+}
+
+bool Settings::fromJson(JsonObjectConst root) {
+    const int version = root["schemaVersion"] | 0;
+    if (version < 1 || version > kSchemaVersion) {
+        return false;  // unknown or newer format: leave the current settings untouched
+    }
+    linkMode = modeFromKey(root["linkMode"] | "", linkMode);
+
+    JsonObjectConst wifi = root["wifi"];
+    wifiSsid = wifi["ssid"] | wifiSsid.c_str();
+    wifiPassword = wifi["password"] | wifiPassword.c_str();
+
+    JsonObjectConst tv = root["tv"];
+    tvHost = tv["host"] | tvHost.c_str();
+    tvName = tv["name"] | tvName.c_str();
+    tvMac = tv["mac"] | tvMac.c_str();
+    tvClientKey = tv["clientKey"] | tvClientKey.c_str();
+    tvKeycode = tv["ipControlKeycode"] | tvKeycode.c_str();
+    tvUsePin = strcmp(tv["pairing"] | (tvUsePin ? "pin" : "prompt"), "pin") == 0;
+
+    JsonObjectConst setup = root["setupDone"];
+    bleSetupDone = setup["bluetooth"] | bleSetupDone;
+    usbSetupDone = setup["usb"] | usbSetupDone;
+
+    JsonObjectConst pointer = root["pointer"];
+    pointerSpeed = constrain(pointer["speed"] | static_cast<int>(pointerSpeed), 1, 5);
+    pointerInvertY = pointer["invertY"] | pointerInvertY;
+
+    JsonObjectConst display = root["display"];
+    brightness = constrain(display["brightness"] | static_cast<int>(brightness), 0, 255);
+    dimTimeoutSec = display["dimAfterSeconds"] | dimTimeoutSec;
+    offTimeoutSec = display["offAfterSeconds"] | offTimeoutSec;
+
+    keyClick = root["keyClick"] | keyClick;
+    statusLed = root["statusLight"] | statusLed;
+    sdBackup = root["sdBackup"] | sdBackup;
+    return true;
 }
 
 void Settings::forgetTv() {

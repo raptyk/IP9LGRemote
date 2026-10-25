@@ -36,6 +36,10 @@ at the bottom of the screen and the remote starts only when all steps are done.
 - **Bluetooth**: needs webOS 5+; the pairing screen shows where the TV menu is.
 - **USB cable**: plug a USB-C cable into the TV; the setup completes when the TV detects it.
 
+Settings are also copied to the SD card (`/config/lgtv-remote/settings.json`), so a
+re-install keeps the Wi-Fi and the TV pairing; Settings > SD card backup can save, restore or
+delete that copy. The file contains the Wi-Fi password and the TV pairing key.
+
 Optional, webOS 23+: *Settings > Support > IP Control Settings* shows an 8-character keycode –
 enter it in **Settings > TV (network) > IP Control keycode** for an extra fallback link.
 (The 6-character code of the *Developer Mode* app is unrelated and not needed.)

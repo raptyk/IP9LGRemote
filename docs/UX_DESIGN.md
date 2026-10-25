@@ -168,6 +168,14 @@ explanation is shown at the bottom (two lines), so no option needs a manual:
 
 Digits `1`–`9` jump straight to a menu row.
 
+### SD card backup
+
+`/config/lgtv-remote/settings.json` – one file in one app folder under the shared `/config`
+directory (nothing in the card root). JSON with `schemaVersion`, written atomically. It is
+restored automatically when NVS is empty after a re-install (toast "Settings restored from SD
+card"). "Delete from card" removes the file and empty folders and switches the copy off.
+The description warns that the file contains the Wi-Fi password and the pairing key.
+
 ## Pairing screen
 
 One screen for the whole network pairing, with a title and explanation per state:
