@@ -1,5 +1,7 @@
 # LGTVRemoteCardputer
 
+![LG TV Remote for M5Stack Cardputer & ADV](publish/cover.png)
+
 A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Cardputer ADV**.
 
 - **Wi-Fi remote (webOS API)** – pointer (cursor), typing on the TV, app launcher, volume level,
@@ -11,6 +13,22 @@ A "Magic Remote" for LG webOS TVs running on the **M5Stack Cardputer** and **Car
   on both models the arrow keys can move it too.
 
 Author: Patryk Strzelecki <patryk@strzelecki.info> · License: MIT · https://github.com/raptyk/LGTVRemoteCardputer
+
+## Screens
+
+| | |
+|---|---|
+| ![Home screen](docs/images/home.png) | ![Wi-Fi remote, connected](docs/images/remote-wifi.png) |
+| **Home** – one card per mode, setup state at a glance | **Wi-Fi remote** – mode band, connection badge, key hints |
+| ![Command feedback](docs/images/remote-feedback.png) | ![Air mouse](docs/images/pointer.png) |
+| **Feedback** – last command, link used, TV volume | **Air mouse** – gyroscope pointer on the Cardputer ADV |
+| ![Setup checklist](docs/images/setup.png) | ![IR remote](docs/images/remote-ir.png) |
+| **Setup** – guided first run, later steps locked | **IR remote** – works with every LG TV |
+| ![Settings](docs/images/settings.png) | |
+| **Settings** – every option explains itself | |
+
+Screens are rendered at 2× from the firmware layout (`python tools/make_screenshots.py`);
+on the device the fonts are the M5GFX bitmap fonts.
 
 ## Install with M5Launcher
 
