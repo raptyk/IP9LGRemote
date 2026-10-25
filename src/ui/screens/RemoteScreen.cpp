@@ -291,44 +291,145 @@ const char* RemoteScreen::footer() const {
     if (infraredOnly_) {
         return str::kFooterServiceKeypad;
     }
-    return pointerActive_ ? str::kFooterPointer : str::kFooterRemote;
+    if (pointerActive_) {
+        return str::kFooterPointer;
+    }
+    return shownMode() == LinkMode::Ir ? str::kFooterRemoteIr : str::kFooterRemote;
 }
 
+LinkMode RemoteScreen::shownMode() const {
+    return infraredOnly_ ? LinkMode::Ir : app_.settings().linkMode;
+}
+
+// Layout of the content area (101 px):
+//   band 24 px   - mode colour, icon, "WI-FI REMOTE" (+ "via IR" after a key press)
+//   middle 52 px - hint, last command or pointer state
+//   keys 25 px   - drawn key caps for the keys that matter most (help, home, pointer)
 void RemoteScreen::draw(M5Canvas& canvas, int top, int height) {
+    // A tinted background in the mode colour: the remote never looks like a menu.
+    canvas.fillRect(0, top, theme::kScreenWidth, height, ui::modeTint(shownMode()));
+
+    const bool feedback = !pointerActive_ && lastSentAt_ != 0 && millis() - lastSentAt_ < kFeedbackMs;
+    drawBand(canvas, top, feedback);
+
+    const int middleTop = top + kBandHeight;
+    const int middleHeight = height - kBandHeight - kKeyRowHeight;
     if (pointerActive_) {
-        drawPointer(canvas, top, height);
-    } else if (lastSentAt_ != 0 && millis() - lastSentAt_ < kFeedbackMs) {
-        drawFeedback(canvas, top, height);
+        drawPointer(canvas, middleTop, middleHeight);
+    } else if (feedback) {
+        drawFeedback(canvas, middleTop, middleHeight);
     } else {
-        drawIdle(canvas, top, height);
+        drawIdle(canvas, middleTop, middleHeight);
+    }
+    drawKeyRow(canvas, top + height - kKeyRowHeight, kKeyRowHeight);
+}
+
+void RemoteScreen::drawBand(M5Canvas& canvas, int top, bool showVia) {
+    using namespace theme;
+    const LinkMode mode = shownMode();
+    canvas.fillRect(0, top, kScreenWidth, kBandHeight, ui::modeColour(mode));
+    const int centerY = top + kBandHeight / 2;
+    icons::draw(canvas, ui::modeIcon(mode), 16, centerY, kText, 0.45f);
+
+    const char* title = ui::modeBandTitle(mode);
+    if (infraredOnly_) {
+        title = str::kBandService;
+    } else if (pointerActive_) {
+        title = app_.airMouse().available() ? str::kAirMouseTitle : str::kPointerTitle;
+    }
+    canvas.setFont(&fonts::FreeSansBold9pt7b);
+    canvas.setTextSize(1);
+    canvas.setTextColor(kText);
+    canvas.setTextDatum(middle_left);
+    painter::drawClippedText(canvas, title, 32, centerY + 1, showVia ? 140 : kScreenWidth - 40);
+
+    if (showVia) {
+        // Which link delivered the last command (fallbacks are never a mystery).
+        canvas.setFont(&fonts::Font0);
+        canvas.setTextDatum(middle_right);
+        canvas.setTextColor(lastFailed_ ? kError : kText);
+        canvas.drawString(via_, kScreenWidth - kPadding, centerY);
+    }
+}
+
+void RemoteScreen::drawKeyRow(M5Canvas& canvas, int top, int height) {
+    struct Hint {
+        const char* key;
+        const char* label;
+    };
+    Hint hints[3];
+    int count = 0;
+    if (pointerActive_) {
+        hints[count++] = {str::kKeyEnter, str::kKeyClick};
+        hints[count++] = {str::kKeyBrackets, str::kKeyScroll};
+        hints[count++] = {str::kKeyA, str::kKeyExit};
+    } else {
+        hints[count++] = {str::kKeyTab, str::kKeyHelp};
+        hints[count++] = {str::kKeyOpt, infraredOnly_ ? str::kKeyBack : str::kKeyHome};
+        if (!infraredOnly_ && shownMode() != LinkMode::Ir) {
+            hints[count++] = {str::kKeyA, app_.airMouse().available() ? str::kKeyAirMouse : str::kKeyPointer};
+        }
+    }
+
+    // Spread the hints evenly over the row.
+    int total = 0;
+    for (int i = 0; i < count; ++i) {
+        total += painter::measureKeyHint(canvas, hints[i].key, hints[i].label);
+    }
+    const int gap = (theme::kScreenWidth - total) / (count + 1);
+    int x = gap;
+    const int centerY = top + height / 2;
+    for (int i = 0; i < count; ++i) {
+        x += painter::drawKeyHint(canvas, x, centerY, hints[i].key, hints[i].label) + gap;
+    }
+}
+
+String RemoteScreen::idleHint() const {
+    if (infraredOnly_) {
+        return str::kServiceKeypadText;
+    }
+    switch (shownMode()) {
+        case LinkMode::Ir:
+            return str::kHintIr;
+        case LinkMode::Ble:
+            return app_.ble().isConnected() ? str::kHintBleReady : str::kHintBleWaiting;
+        case LinkMode::Usb:
+            return app_.usb().isMounted() ? str::kHintUsbReady : str::kHintUsbWaiting;
+        default: {
+            if (!app_.webos().isReady() && !app_.ipControl().isReady()) {
+                return str::kHintWifiOffline;
+            }
+            const Settings& settings = app_.settings();
+            const String tv = settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
+            return String(str::kHintWifiConnected) + tv + ". " + str::kHintNoAim;
+        }
     }
 }
 
 void RemoteScreen::drawIdle(M5Canvas& canvas, int top, int height) {
-    // Mode icon on the mode colour + mode name: which link is used is never in doubt.
-    const LinkMode mode = infraredOnly_ ? LinkMode::Ir : app_.settings().linkMode;
-    const int iconY = top + 19;
-    canvas.fillRoundRect(theme::kScreenWidth / 2 - 18, iconY - 15, 36, 30, 7, ui::modeColour(mode));
-    icons::draw(canvas, ui::modeIcon(mode), theme::kScreenWidth / 2, iconY, theme::kText, 0.62f);
-
-    if (infraredOnly_) {
-        painter::drawCenteredLines(canvas, top + 36, height - 36, str::kServiceKeypadTitle, str::kServiceKeypadText);
-        return;
-    }
-    const Settings& settings = app_.settings();
-    String title = ui::modeTitle(mode);
-    if ((mode == LinkMode::Auto || mode == LinkMode::Lan) && !settings.tvHost.isEmpty()) {
-        title += ": ";
-        title += settings.tvName.isEmpty() ? settings.tvHost : settings.tvName;
-    }
-    painter::drawCenteredLines(canvas, top + 36, height - 36, title.c_str(), str::kIdleHint);
+    using namespace theme;
+    const String hint = idleHint();
+    const int lineHeight = 15;
+    const int maxWidth = kScreenWidth - 2 * kPadding;
+    canvas.setFont(&fonts::Font2);
+    canvas.setTextSize(1);
+    canvas.setTextColor(kText);
+    canvas.setTextDatum(top_center);
+    const int lines = min<int>(painter::wrapText(canvas, hint, maxWidth).size(), 3);
+    const int y = top + (height - lines * lineHeight) / 2;
+    painter::drawWrappedText(canvas, hint, kScreenWidth / 2, y, maxWidth, lineHeight, 3);
 }
 
 void RemoteScreen::drawFeedback(M5Canvas& canvas, int top, int height) {
     using namespace theme;
     const uint32_t age = millis() - lastSentAt_;
     const int centerX = kScreenWidth / 2;
-    const int centerY = top + height / 2 - 8;
+
+    WebOsClient& webos = app_.webos();
+    const int volume = webos.volume();
+    const bool showVolume = lastWasVolume_ && volume >= 0 && millis() - webos.volumeChangedAt() < kVolumeOverlayMs;
+    const int pillHeight = 34;
+    const int pillTop = top + (height - pillHeight - (showVolume ? 10 : 0)) / 2;
 
     // Large font for short labels, a smaller one for long ones ("QUICK MENU") so nothing is cut.
     canvas.setTextSize(1);
@@ -338,60 +439,53 @@ void RemoteScreen::drawFeedback(M5Canvas& canvas, int top, int height) {
     }
     const int labelWidth = min<int>(canvas.textWidth(label_) + 28, kScreenWidth - 12);
     if (age < kFlashMs && !lastFailed_) {
-        canvas.fillRoundRect(centerX - labelWidth / 2, centerY - 22, labelWidth, 44, 10, kAccent);
+        canvas.fillRoundRect(centerX - labelWidth / 2, pillTop, labelWidth, pillHeight, 10, kAccent);
     } else {
-        canvas.drawRoundRect(centerX - labelWidth / 2, centerY - 22, labelWidth, 44, 10,
-                             lastFailed_ ? kError : kSurfaceHigh);
+        canvas.drawRoundRect(centerX - labelWidth / 2, pillTop, labelWidth, pillHeight, 10,
+                             lastFailed_ ? kError : kTextMuted);
     }
     canvas.setTextDatum(middle_center);
     canvas.setTextColor(lastFailed_ ? kError : colourKeyColour(label_));
-    painter::drawClippedText(canvas, label_, centerX, centerY + 1, kScreenWidth - 24);
+    painter::drawClippedText(canvas, label_, centerX, pillTop + pillHeight / 2 + 1, kScreenWidth - 24);
 
-    // Volume level from the TV (network link only).
-    WebOsClient& webos = app_.webos();
-    const int volume = webos.volume();
-    if (lastWasVolume_ && volume >= 0 && millis() - webos.volumeChangedAt() < kVolumeOverlayMs) {
+    // Volume level reported by the TV (network link only).
+    if (showVolume) {
         const int barWidth = 150;
         const int barX = centerX - barWidth / 2 - 14;
-        const int barY = centerY + 30;
-        canvas.fillRoundRect(barX, barY, barWidth, 6, 3, kSurfaceHigh);
-        canvas.fillRoundRect(barX, barY, barWidth * constrain(volume, 0, 100) / 100, 6, 3, kAccent);
+        const int barY = pillTop + pillHeight + 5;
+        canvas.fillRoundRect(barX, barY, barWidth, 5, 2, kSurfaceHigh);
+        canvas.fillRoundRect(barX, barY, barWidth * constrain(volume, 0, 100) / 100, 5, 2, kAccent);
         canvas.setFont(&fonts::Font0);
         canvas.setTextColor(kText);
         canvas.setTextDatum(middle_left);
         canvas.drawString(String(volume), barX + barWidth + 8, barY + 3);
-    } else {
-        canvas.setFont(&fonts::Font0);
-        canvas.setTextColor(kTextMuted);
-        canvas.setTextDatum(middle_center);
-        canvas.drawString(via_, centerX, centerY + 33);
     }
 }
 
 void RemoteScreen::drawPointer(M5Canvas& canvas, int top, int height) {
     using namespace theme;
-    const int centerX = kScreenWidth / 2;
-    const int centerY = top + height / 2 - 10;
+    const int centerY = top + height / 2;
+    const int crossX = 44;
 
-    // Crosshair "target" icon.
+    // Crosshair "target" icon; it lights up while the cursor moves.
     const uint16_t colour = (millis() - pointerLastActivityAt_ < 200) ? kAccent : kText;
-    canvas.drawCircle(centerX, centerY, 16, colour);
-    canvas.drawCircle(centerX, centerY, 15, colour);
-    canvas.fillCircle(centerX, centerY, 3, colour);
-    canvas.drawFastHLine(centerX - 24, centerY, 10, colour);
-    canvas.drawFastHLine(centerX + 15, centerY, 10, colour);
-    canvas.drawFastVLine(centerX, centerY - 24, 10, colour);
-    canvas.drawFastVLine(centerX, centerY + 15, 10, colour);
+    canvas.drawCircle(crossX, centerY, 12, colour);
+    canvas.drawCircle(crossX, centerY, 11, colour);
+    canvas.fillCircle(crossX, centerY, 3, colour);
+    canvas.drawFastHLine(crossX - 19, centerY, 8, colour);
+    canvas.drawFastHLine(crossX + 12, centerY, 8, colour);
+    canvas.drawFastVLine(crossX, centerY - 19, 8, colour);
+    canvas.drawFastVLine(crossX, centerY + 12, 8, colour);
 
-    canvas.setFont(&fonts::FreeSansBold9pt7b);
+    const int textX = crossX + 30;
+    const int maxWidth = kScreenWidth - textX - kPadding;
+    const char* hint = app_.airMouse().available() ? str::kPointerHintAir : str::kPointerHintKeys;
+    canvas.setFont(&fonts::Font2);
     canvas.setTextSize(1);
     canvas.setTextColor(kText);
-    canvas.setTextDatum(middle_center);
-    canvas.drawString(str::kPointerTitle, centerX, centerY + 34);
-    canvas.setFont(&fonts::Font0);
-    canvas.setTextColor(kTextMuted);
-    canvas.drawString(app_.airMouse().available() ? str::kPointerHintAir : str::kPointerHintKeys, centerX,
-                      centerY + 48);
+    canvas.setTextDatum(top_left);
+    const int lines = min<int>(painter::wrapText(canvas, hint, maxWidth).size(), 3);
+    painter::drawWrappedText(canvas, hint, textX, centerY - lines * 15 / 2, maxWidth, 15, 3);
 }
 
 }  // namespace lgremote

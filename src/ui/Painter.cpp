@@ -161,6 +161,30 @@ void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* title,
     }
 }
 
+int measureKeyHint(M5Canvas& canvas, const char* key, const char* label) {
+    canvas.setFont(&fonts::Font0);
+    canvas.setTextSize(1);
+    const int capWidth = max(16, static_cast<int>(canvas.textWidth(key)) + 8);
+    return capWidth + 4 + canvas.textWidth(label);
+}
+
+int drawKeyHint(M5Canvas& canvas, int x, int centerY, const char* key, const char* label) {
+    canvas.setFont(&fonts::Font0);
+    canvas.setTextSize(1);
+    const int capWidth = max(16, static_cast<int>(canvas.textWidth(key)) + 8);
+    const int capHeight = 15;
+    // Key cap: light top face with a darker bottom edge, like the Cardputer keys.
+    canvas.fillRoundRect(x, centerY - capHeight / 2 + 1, capWidth, capHeight, 3, kSurface);
+    canvas.fillRoundRect(x, centerY - capHeight / 2, capWidth, capHeight - 2, 3, kText);
+    canvas.setTextColor(kBackground);
+    canvas.setTextDatum(middle_center);
+    canvas.drawString(key, x + capWidth / 2, centerY - 1);
+    canvas.setTextColor(kText);
+    canvas.setTextDatum(middle_left);
+    canvas.drawString(label, x + capWidth + 4, centerY);
+    return capWidth + 4 + canvas.textWidth(label);
+}
+
 void drawScrollBar(M5Canvas& canvas, int top, int height, int first, int visible, int total) {
     if (total <= visible) {
         return;

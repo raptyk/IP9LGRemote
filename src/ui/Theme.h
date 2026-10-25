@@ -33,6 +33,12 @@ constexpr uint16_t kModeIr = rgb(225, 80, 30);
 constexpr uint16_t kModeBluetooth = rgb(110, 80, 220);
 constexpr uint16_t kModeUsb = rgb(30, 160, 90);
 
+// Dark tints of the mode colours: background of the remote screen, so it never looks like a menu.
+constexpr uint16_t kTintWifi = rgb(8, 22, 46);
+constexpr uint16_t kTintIr = rgb(42, 16, 6);
+constexpr uint16_t kTintBluetooth = rgb(24, 16, 48);
+constexpr uint16_t kTintUsb = rgb(6, 32, 18);
+
 constexpr int kScreenWidth = 240;
 constexpr int kScreenHeight = 135;
 constexpr int kStatusBarHeight = 18;

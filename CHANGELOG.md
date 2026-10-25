@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 – 2026-10-25
+
+- Remote screen redesign so the active mode is unmistakable and it never looks like a menu:
+  background tinted in the mode colour, a solid band "WI-FI REMOTE" / "IR REMOTE" /
+  "BLUETOOTH REMOTE" / "USB REMOTE" with the mode icon, and drawn key caps for the keys that
+  matter most: [TAB] Help, [OPT] Home, [A] Air mouse (Pointer on the original Cardputer).
+- Mode-specific hints: "aim at the TV" only for IR (and Wi-Fi while it falls back to IR);
+  Wi-Fi shows "Connected to <TV>. No need to aim at the TV.", Bluetooth/USB their state.
+- After a key press the band shows which link delivered it; pointer mode shows
+  [ENTER] Click, [ [ ] ] Scroll, [A] Exit.
+
 ## 1.3.6 – 2026-10-25
 
 - Warning light: one short red double blink (never repeating) when the user has to do

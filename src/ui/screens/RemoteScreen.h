@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 
+#include "app/Settings.h"
 #include "core/RemoteKey.h"
 #include "ui/Screen.h"
 
@@ -30,6 +31,13 @@ private:
     bool handlePointerKey(const KeyEvent& event);
     void togglePointer();
     void stopPointer();
+    static constexpr int kBandHeight = 24;
+    static constexpr int kKeyRowHeight = 25;
+
+    LinkMode shownMode() const;
+    String idleHint() const;
+    void drawBand(M5Canvas& canvas, int top, bool showVia);
+    void drawKeyRow(M5Canvas& canvas, int top, int height);
     void drawIdle(M5Canvas& canvas, int top, int height);
     void drawFeedback(M5Canvas& canvas, int top, int height);
     void drawPointer(M5Canvas& canvas, int top, int height);

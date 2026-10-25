@@ -65,6 +65,9 @@ RULES = [
     (r"^kPair\w+Title$|^kIrTestQuestion$", "FreeSansBold9pt7b", 228, 1),
     (r"Hint$|^kPair\w+Text$|^kPairChecks$", "Font2", 228, 3),
     (r"^kHomeStatus$|^kUsbNotConnected$|^kInfrared$", "Font0", 130, 1),
+    (r"^kHint", "Font2", 228, 3),                      # remote screen hint (middle area)
+    (r"^kBand", "FreeSansBold9pt7b", 200, 1),          # coloured mode band
+    (r"^kPointerHint", "Font2", 160, 3),               # next to the crosshair
 ]
 
 problems = 0
@@ -86,6 +89,20 @@ for label in labels:
     if width(font, label) > 216:
         problems += 1
         print(f"feedback label too wide: {label} {width('FreeSansBold18pt7b', label)} px")
+
+# Key-cap row of the remote screen: caps (min 16 px, text + 8) + 4 px + label, three per row.
+def key_hint(key, label):
+    return max(16, width("Font0", key) + 8) + 4 + width("Font0", label)
+
+
+for row in (
+    [("kKeyTab", "kKeyHelp"), ("kKeyOpt", "kKeyHome"), ("kKeyA", "kKeyAirMouse")],
+    [("kKeyEnter", "kKeyClick"), ("kKeyBrackets", "kKeyScroll"), ("kKeyA", "kKeyExit")],
+):
+    total = sum(key_hint(strings[k], strings[l]) for k, l in row)
+    if total + 4 * 8 > 240:
+        problems += 1
+        print(f"key row too wide: {total} px -> {row}")
 
 print("OK" if problems == 0 else f"{problems} problem(s)")
 sys.exit(1 if problems else 0)

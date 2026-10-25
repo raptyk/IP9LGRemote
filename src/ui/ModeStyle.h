@@ -20,6 +20,15 @@ inline uint16_t modeColour(LinkMode mode) {
     }
 }
 
+inline uint16_t modeTint(LinkMode mode) {
+    switch (mode) {
+        case LinkMode::Ir: return theme::kTintIr;
+        case LinkMode::Ble: return theme::kTintBluetooth;
+        case LinkMode::Usb: return theme::kTintUsb;
+        default: return theme::kTintWifi;
+    }
+}
+
 // Status LED colours (0xRRGGBB), the LED counterpart of modeColour().
 constexpr uint32_t kLedSuccess = 0x00FF30;
 constexpr uint32_t kLedError = 0xFF0000;
@@ -39,6 +48,16 @@ inline icons::Icon modeIcon(LinkMode mode) {
         case LinkMode::Ble: return icons::Icon::Bluetooth;
         case LinkMode::Usb: return icons::Icon::Usb;
         default: return icons::Icon::Wifi;
+    }
+}
+
+// Upper-case name for the coloured band of the remote screen.
+inline const char* modeBandTitle(LinkMode mode) {
+    switch (mode) {
+        case LinkMode::Ir: return str::kBandIr;
+        case LinkMode::Ble: return str::kBandBle;
+        case LinkMode::Usb: return str::kBandUsb;
+        default: return str::kBandWifi;
     }
 }
 

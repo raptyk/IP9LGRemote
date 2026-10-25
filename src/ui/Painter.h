@@ -32,6 +32,11 @@ int drawWrappedText(M5Canvas& canvas, const String& text, int x, int y, int maxW
 void drawCenteredLines(M5Canvas& canvas, int top, int height, const char* title, const char* body = nullptr,
                        const char* detail = nullptr);
 
+// A drawn key cap ("TAB") followed by its meaning ("Help"), vertically centred on `centerY`.
+// Returns the total width; `measureKeyHint` gives the same width without drawing.
+int drawKeyHint(M5Canvas& canvas, int x, int centerY, const char* key, const char* label);
+int measureKeyHint(M5Canvas& canvas, const char* key, const char* label);
+
 // Small vertical scroll indicator on the right edge.
 void drawScrollBar(M5Canvas& canvas, int top, int height, int first, int visible, int total);
 

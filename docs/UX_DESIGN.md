@@ -60,27 +60,33 @@ itself with a "Connected!" pop-up (closes after 2.5 s).
 
 ## Screen layout (Remote screen)
 
+The remote screen must never look like a menu: the whole content area is tinted in the
+mode colour and starts with a solid band in that colour.
+
 ```
 ┌──────────────────────────────────────────┐
 │ WI-FI ● Living room TV            ▮▮▮ 87% │  status bar (18 px)
 ├──────────────────────────────────────────┤
+│ (wifi) WI-FI REMOTE              via WI-FI│  band in the mode colour (24 px)
 │                                          │
-│                 VOL +                    │  last action (18 pt, 12 pt if long)
-│              ▁▂▃▄▅▆▇ 24                   │  optional detail (volume level)
+│   Connected to Living room TV.           │  middle (52 px): mode hint,
+│   No need to aim at the TV.              │  or the last command, or the pointer
 │                                          │
+│ [TAB] Help    [OPT] Home    [A] Air mouse │  drawn key caps (25 px)
 ├──────────────────────────────────────────┤
-│ tab help  opt home  a pointer            │  footer hints (16 px)
+│ t type  l apps  p power  0-9 digits      │  footer: more keys (16 px)
 └──────────────────────────────────────────┘
 ```
 
-- Status bar colour encodes link state: green = ready, amber = connecting,
-  red = unavailable; in the Wi-Fi mode the text adds "(IR)" while IR is used.
-- The action area flashes the accent colour for ~120 ms on every sent command
-  (visual "click"), then shows the action name for 1.5 s.
-- Pointer mode replaces the action area with a crosshair indicator and the
-  hint `enter click · [ ] scroll · a exit`. Arrows accept `fn` too.
-- All texts are word-wrapped; `tools/check_text_fit.py` verifies every string with
-  the real font metrics (240 px width).
+- Band titles: WI-FI REMOTE (blue), IR REMOTE (orange), BLUETOOTH REMOTE (violet),
+  USB REMOTE (green), SERVICE MENU (IR); AIR MOUSE / POINTER while the pointer is on.
+- The hint depends on the mode: only IR (and Wi-Fi while the TV is not connected yet,
+  because keys then fall back to IR) asks the user to aim at the TV.
+- After a key press the middle shows the command (accent flash for ~120 ms, 1.5 s in
+  total) and the band shows which link delivered it ("via IR", "via WI-FI").
+- In pointer mode the key caps change to [ENTER] Click, [ [ ] ] Scroll, [A] Exit.
+- All texts are word-wrapped; `tools/check_text_fit.py` verifies every string (and the
+  key-cap rows) with the real font metrics (240 px width).
 
 ## Key map (Remote screen)
 
