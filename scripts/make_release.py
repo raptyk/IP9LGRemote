@@ -48,4 +48,6 @@ def _make_release(source, target, env):
     print(f"Release images:\n  {app_out}\n  {full_out}")
 
 
-env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", _make_release)  # noqa: F821
+# "checkprogsize" runs on every build, so the images are (re)written even when the
+# firmware itself did not change (e.g. after deleting the release folder).
+env.AddPostAction("checkprogsize", _make_release)  # noqa: F821
