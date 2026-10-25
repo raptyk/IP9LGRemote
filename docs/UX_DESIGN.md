@@ -190,7 +190,7 @@ glow in a dim living room. Settings > Status light switches it off.
 | three red blinks | connection lost |
 | steady dim glow, mode colour | pointer mode is on |
 | short red blink every 10 s | battery at 10 % or less |
-| one red double blink (with a pop-up) | something to do first: locked step, missing setup, invalid input, pairing failed, nothing found |
+| one red double blink (with a pop-up) | something to do first: locked step, missing setup, invalid input, pairing failed, nothing found; also each time a not-configured card or a locked row comes into focus |
 
 At start-up the LED greets with the four mode colours; Settings > Test status light shows
 red, green, blue and white.

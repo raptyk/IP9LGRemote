@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 – 2026-10-25
+
+- Warning blink every time a not-configured home card or a locked (greyed-out) row comes into
+  focus, not only once per session.
+
 ## 1.4.2 – 2026-10-25
 
 - Battery gauge no longer flickers (e.g. 35 % ↔ 37 %): the level is sampled every 2 s,

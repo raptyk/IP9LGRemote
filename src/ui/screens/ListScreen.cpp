@@ -40,13 +40,12 @@ void ListScreen::onKey(const KeyEvent& event) {
     const int count = static_cast<int>(items_.size());
     switch (event.code) {
         case keycode::kUp:
-            if (count > 0) {
-                selected_ = (selected_ + count - 1) % count;
-            }
-            break;
         case keycode::kDown:
             if (count > 0) {
-                selected_ = (selected_ + 1) % count;
+                selected_ = (selected_ + (event.code == keycode::kUp ? count - 1 : 1)) % count;
+                if (!isEnabled(selected_)) {
+                    app_.signalWarning();  // a locked row came into focus
+                }
             }
             break;
         case keycode::kLeft:

@@ -72,10 +72,9 @@ void HomeScreen::move(int delta) {
 }
 
 void HomeScreen::warnIfSetupNeeded() {
+    // Every time such a card comes into view: one short red double blink, never a loop.
     const Card& card = kCards[selected_];
-    const uint32_t bit = 1u << selected_;
-    if (card.kind == CardKind::Mode && !app_.settings().isSetUp(card.mode) && (warnedCards_ & bit) == 0) {
-        warnedCards_ |= bit;
+    if (card.kind == CardKind::Mode && !app_.settings().isSetUp(card.mode)) {
         app_.signalWarning();
     }
 }
